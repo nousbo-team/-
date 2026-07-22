@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_catalog %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">품목코드 {{ product.code }} · {{ product.get_category_display }} · {{ product.get_product_line_display }}</div>
+<h1>{{ product.name }}</h1>
+{% if open_request %}
+<p class="subtitle">진행중인 재발주 건이 있습니다 — <a href="{% url 'workflow:request_detail' open_request.pk %}">{{ open_request.request_no }} 보기</a></p>
+{% else %}
+<p class="subtitle">진행중인 재발주 건이 없습니다.</p>
+{% endif %}
+
+<h2>버전 이력 (시간순)</h2>
+<div class="card table-wrap">
+  {% if files %}
+  <table>
+    <thead>
+      <tr><th>버전</th><th>상태</th><th>업로드</th><th>승인</th><th>파일</th><th>비고</th></tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+        <td>v{{ f.version }}</td>
+        <td>
+          {% if f.status == 'FINAL_APPROVED' %}<span class="pill pill-final">최종 승인본</span>
+          {% elif f.status == 'SUPERSEDED' %}<span class="pill pill-submitted">이전 버전</span>
+          {% else %}<span class="pill pill-review1">작업중</span>{% endif %}
+        </td>
+        <td>{{ f.uploaded_by.get_full_name|default:f.uploaded_by.username }}<br><span style="color:var(--ink-soft);font-size:11.5px;">{{ f.uploaded_at|date:'Y-m-d H:i' }}</span></td>
+        <td>
+          {% if f.approved_by %}
+          {{ f.approved_by.get_full_name|default:f.approved_by.username }}<br><span style="color:var(--ink-soft);font-size:11.5px;">{{ f.approved_at|date:'Y-m-d H:i' }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if f.status == 'FINAL_APPROVED' %}
+          <a class="btn" href="{{ f.ai_file.url }}" download>AI</a>
+          <a class="btn" href="{{ f.jpg_file.url }}" download>JPG</a>
+          {% else %}
+          <a class="btn btn-ghost" href="{{ f.ai_file.url }}" download>AI</a>
+          <a class="btn btn-ghost" href="{{ f.jpg_file.url }}" download>JPG</a>
+          <div class="hint" style="color:var(--danger);margin-top:4px;">⚠ 승인본이 아닙니다 — 인쇄용으로 사용하지 마세요</div>
+          {% endif %}
+        </td>
+        <td style="font-size:12.5px;color:var(--ink-soft);">{{ f.note|default:'—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">등록된 파일이 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}

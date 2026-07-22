@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(python -c \"import weasyprint\")",
+      "Bash(python -c \"import reportlab; print\\(reportlab.Version\\)\")",
+      "Bash(pandoc --version)",
+      "Bash(wkhtmltopdf --version)",
+      "Bash(python -c \"import markdown\")",
+      "PowerShell(python --version)",
+      "PowerShell(python -c \"import weasyprint\" 2>&1)",
+      "PowerShell(python -c \"import reportlab; print\\(reportlab.Version\\)\" 2>&1)",
+      "PowerShell(python -c \"import markdown; print\\('ok'\\)\" 2>&1)",
+      "PowerShell(Get-Command pandoc -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command soffice -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command py -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command python3 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command python -ErrorAction SilentlyContinue)",
+      "PowerShell(py -m pip install --quiet markdown xhtml2pdf 2>&1)",
+      "PowerShell(py -m pip install --quiet markdown 2>&1)",
+      "PowerShell(py -m pip install --quiet reportlab 2>&1)",
+      "PowerShell(py -c \"import markdown, reportlab; print\\('markdown', markdown.__version__\\); print\\('reportlab', reportlab.Version\\)\")",
+      "PowerShell(py \"C:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E-----------------\\\\d5e65b97-d716-4943-bd66-db6735c97aa1\\\\scratchpad\\\\build_pdfs.py\")",
+      "PowerShell(py -0p 2>&1)",
+      "PowerShell(py -m pip install --force-reinstall --no-cache-dir pillow 2>&1)",
+      "PowerShell(py -3.13 --version)",
+      "PowerShell(py -3.13 -m pip install --quiet markdown reportlab 2>&1)",
+      "PowerShell(py -3.13 -c \"import reportlab, PIL; print\\('reportlab', reportlab.Version\\); print\\('PIL ok'\\)\")",
+      "PowerShell(py -3.13 \"C:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E-----------------\\\\d5e65b97-d716-4943-bd66-db6735c97aa1\\\\scratchpad\\\\build_pdfs.py\")",
+      "PowerShell(Get-Command psql -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command docker -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command git -ErrorAction SilentlyContinue)",
+      "Bash(mkdir -p \"E:/허동혁/포장지관리서비스 구현/app\")",
+      "Bash(./venv/Scripts/python.exe manage.py shell -c ' *)",
+      "Bash(rm -f catalog/migrations/0001_initial.py workflow/migrations/0001_initial.py accounts/migrations/0001_initial.py)",
+      "Bash(rm -rf catalog/migrations/__pycache__ workflow/migrations/__pycache__ accounts/migrations/__pycache__)",
+      "Bash(\"./venv/Scripts/python.exe\" manage.py collectstatic --noinput)"
+    ]
+  }
+}

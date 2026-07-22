@@ -1,0 +1,50 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}누보 포장지 발주관리 시스템{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  {% if user.is_authenticated %}
+  <div class="topbar">
+    <a class="brand" href="{% url 'workflow:dashboard' %}">누보 포장지 발주관리 시스템</a>
+    <nav>
+      <a href="{% url 'workflow:dashboard' %}" class="{% block nav_dashboard %}{% endblock %}">대시보드</a>
+      <a href="{% url 'catalog:product_list' %}" class="{% block nav_catalog %}{% endblock %}">품목·파일</a>
+      <a href="{% url 'workflow:bulk' %}" class="{% block nav_bulk %}{% endblock %}">일괄 업로드/다운로드</a>
+      <a href="{% url 'workflow:notifications' %}" class="{% block nav_notify %}{% endblock %}">
+        알림함{% if unread_notification_count %} <span class="badge-count">{{ unread_notification_count }}</span>{% endif %}
+      </a>
+      <span class="user-chip">
+        {{ user.get_full_name|default:user.username }} · {{ user.profile.get_role_display }}
+        {% if user.profile.role == 'REVIEWER' %}
+        <form class="inline" method="post" action="{% url 'accounts:away_toggle' %}">
+          {% csrf_token %}
+          <button class="btn btn-ghost" type="submit" style="padding:4px 8px;font-size:11.5px;">
+            {% if user.profile.is_away %}부재중 해제{% else %}부재중 설정{% endif %}
+          </button>
+        </form>
+        {% endif %}
+        <form class="inline" method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button class="btn btn-ghost" type="submit" style="padding:0;font-size:inherit;color:var(--accent-ink);text-decoration:underline;">로그아웃</button>
+        </form>
+      </span>
+    </nav>
+  </div>
+  {% endif %}
+
+  <div class="wrap{% block wrap_class %}{% endblock %}">
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

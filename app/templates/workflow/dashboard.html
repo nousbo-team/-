@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}대시보드 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">{{ request.user.profile.get_role_display }}</div>
+<h1>대시보드</h1>
+
+{% if role == 'REQUESTER' %}
+<p class="subtitle">내가 등록한 재발주 요청 현황입니다.</p>
+<div class="actions-row" style="margin-bottom:16px;">
+  <a class="btn btn-primary" href="{% url 'workflow:new_request' %}">+ 재발주 요청 등록</a>
+</div>
+<div class="card table-wrap">
+  {% if my_requests %}
+  <table>
+    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>등록일</th></tr></thead>
+    <tbody>
+      {% for r in my_requests %}
+      <tr>
+        <td><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td>{{ r.product.name }}</td>
+        <td>{{ r.get_reason_display }}</td>
+        <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td>{{ r.created_at|date:'Y-m-d H:i' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">등록한 요청이 없습니다.</div>
+  {% endif %}
+</div>
+
+{% else %}
+<p class="subtitle">내가 처리해야 할 건 목록입니다.</p>
+<div class="card table-wrap">
+  {% if empty_hint %}
+  <div class="empty-state">{{ empty_hint }}</div>
+  {% elif pending %}
+  <table>
+    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>요청자</th><th>대기 경과</th></tr></thead>
+    <tbody>
+      {% for r in pending %}
+      <tr>
+        <td><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td>{{ r.product.name }}</td>
+        <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td>{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        <td{% if r.updated_at < stale_cutoff %} style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">처리할 건이 없습니다.</div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

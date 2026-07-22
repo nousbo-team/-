@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}일괄 업로드/다운로드 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_bulk %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">P0-2</div>
+<h1>일괄 업로드/다운로드</h1>
+<p class="subtitle">기존 보유 파일 이관이나 다건 인쇄 발주 시, 여러 파일을 한 번에 업로드·다운로드할 수 있습니다.</p>
+
+<h2>일괄 업로드 (이력 포함)</h2>
+<div class="card">
+  <form method="post" action="{% url 'workflow:bulk_upload' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field">
+      <label>엑셀 매핑표 (선택, 품목코드 기준 upsert)</label>
+      <input type="file" name="mapping_file" accept=".xlsx">
+      <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 매핑표가 없으면 파일명으로 기존 품목명을 자동 매칭합니다(신규 품목 생성 불가).</div>
+    </div>
+    <div class="field">
+      <label>업로드할 파일들 (AI + JPG 쌍, 예: 품목명_v2.ai / 품목명_v2.jpg)</label>
+      <input type="file" name="files" multiple required>
+    </div>
+    <button class="btn btn-primary" type="submit">일괄 업로드</button>
+  </form>
+</div>
+
+<h2>일괄 다운로드 (최종 승인본 + 이력)</h2>
+<div class="card">
+  <form method="post" action="{% url 'workflow:bulk_download' %}">
+    {% csrf_token %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:30px;"></th><th>품목코드</th><th>품목명</th><th>유형</th><th>최종 승인본</th></tr></thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td><input type="checkbox" name="products" value="{{ p.pk }}"></td>
+            <td style="font-family:monospace;font-size:12.5px;">{{ p.code }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.get_category_display }}</td>
+            <td>
+              {% with f=p.current_final_file %}
+              {% if f %}<span class="pill pill-final">v{{ f.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}
+              {% endwith %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" type="submit" style="margin-top:12px;">선택한 품목 zip 다운로드 (manifest.csv 포함)</button>
+  </form>
+</div>
+{% endblock %}

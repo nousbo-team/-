@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}품목·파일 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_catalog %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">품목 기준 관리</div>
+<h1>품목·파일</h1>
+<p class="subtitle">품목코드 또는 품목명으로 검색하면 해당 품목의 최종 승인본과 버전 이력을 확인할 수 있습니다.</p>
+
+<form method="get" class="card" style="margin-bottom:16px;display:flex;gap:8px;">
+  <input type="text" name="q" value="{{ q }}" placeholder="품목코드 또는 품목명으로 검색" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px;">
+  <button class="btn btn-primary" type="submit">검색</button>
+</form>
+
+<div class="card table-wrap">
+  {% if rows %}
+  <table>
+    <thead>
+      <tr><th>품목코드</th><th>품목명</th><th>유형</th><th>제품군</th><th>최종 승인본</th><th>버전 수</th><th>진행중 요청</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
+        <td><a href="{% url 'catalog:product_detail' row.product.pk %}">{{ row.product.name }}</a></td>
+        <td>{{ row.product.get_category_display }}</td>
+        <td>{{ row.product.get_product_line_display }}</td>
+        <td>
+          {% if row.final_file %}
+          <span class="pill pill-final">v{{ row.final_file.version }} 승인본</span>
+          {% else %}
+          <span class="pill pill-submitted">승인본 없음</span>
+          {% endif %}
+        </td>
+        <td>{{ row.version_count }}</td>
+        <td>
+          {% if row.open_request %}
+          <a href="{% url 'workflow:request_detail' row.open_request.pk %}" class="pill pill-review1">{{ row.open_request.request_no }}</a>
+          {% else %}
+          <span style="color:var(--ink-soft);font-size:12.5px;">없음</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">검색 결과가 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}

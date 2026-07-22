@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}알림함 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_notify %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">인앱 알림</div>
+<h1>알림함</h1>
+<p class="subtitle">이메일·카카오톡/문자는 모의(mock) 발송으로 로그에만 남습니다. 여기 알림함이 실제 확인 채널입니다.</p>
+
+<div class="card">
+  {% if notifs %}
+  <ul class="timeline">
+    {% for n in notifs %}
+    <li>
+      <div><a href="{% url 'workflow:request_detail' n.request_id %}">{{ n.message }}</a></div>
+      <div class="meta">{{ n.request.product.name }} · {{ n.created_at|date:'Y-m-d H:i' }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty-state">알림이 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}

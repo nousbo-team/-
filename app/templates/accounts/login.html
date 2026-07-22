@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}로그인 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block wrap_class %} narrow{% endblock %}
+{% block content %}
+<div class="login-box">
+  <div class="eyebrow" style="text-align:center">포장지 재발주 프로세스</div>
+  <h1>누보 포장지 발주관리 시스템</h1>
+  <p class="subtitle">로그인 후 담당 업무를 처리하세요.</p>
+
+  <div class="card">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="field error"><div class="error-text">아이디 또는 비밀번호가 올바르지 않습니다.</div></div>
+      {% endif %}
+      <div class="field">
+        <label for="id_username">아이디</label>
+        <input type="text" name="username" id="id_username" autofocus required>
+      </div>
+      <div class="field">
+        <label for="id_password">비밀번호</label>
+        <input type="password" name="password" id="id_password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">로그인</button>
+    </form>
+  </div>
+
+  <div class="demo-accounts card">
+    데모 계정 (비밀번호 <code>1234</code>)<br>
+    <code>haon</code> 이정인 매니저(요청자·울산공장) ·
+    <code>isis9</code> 박현경 팀장(1차검토·관리창구) ·
+    <code>shindeok_kim</code> 김신덕 본부장(백업 검토자) ·
+    <code>guychj</code> 최효진 차장(디자인) ·
+    <code>hjcho</code> 조현종 소장(최종검수·반려판단)
+  </div>
+</div>
+{% endblock %}
