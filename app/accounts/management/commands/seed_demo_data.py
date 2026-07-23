@@ -67,7 +67,7 @@ class Command(BaseCommand):
             user=hjcho, defaults=dict(role=UserProfile.Role.APPROVER, department='연구소', title='소장'))
 
         self.stdout.write(self.style.SUCCESS(
-            f'계정 생성 완료 (비밀번호: {DEMO_PASSWORD}) — haon, isis9, shindeok_kim, guychj, hjcho, nousbo'))
+            f'계정 생성 완료 (비밀번호: {DEMO_PASSWORD}): haon, isis9, shindeok_kim, guychj, hjcho, nousbo'))
 
         samples = [
             dict(code='FERT-PP-1001', name='그린비료 20kg PP포대', category=Product.Category.PP_BAG,
