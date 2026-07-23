@@ -35,3 +35,5 @@ services:
         sync: false
       - key: AWS_S3_ENDPOINT_URL
         sync: false
+      - key: AWS_S3_REGION_NAME
+        sync: false
