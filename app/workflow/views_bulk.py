@@ -170,7 +170,9 @@ def bulk_download(request):
                     ])
         manifest_io = io.StringIO()
         csv.writer(manifest_io).writerows(manifest_rows)
-        zf.writestr('manifest.csv', manifest_io.getvalue())
+        # UTF-8 BOM 없이 저장하면 Excel(특히 한글 Windows)이 CP949로 잘못 인식해
+        # 한글이 깨져 보인다 — utf-8-sig로 BOM을 붙여줘야 Excel에서 바로 정상 표시된다.
+        zf.writestr('manifest.csv', manifest_io.getvalue().encode('utf-8-sig'))
 
     if skipped:
         messages.warning(request, f'승인본이 없어 제외된 품목: {", ".join(skipped)}')
