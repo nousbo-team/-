@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
@@ -6,7 +7,12 @@ from django.utils import timezone
 
 
 def packaging_upload_to(instance, filename):
-    return f'packaging/{instance.product_id}/{filename}'
+    # 원본 파일명(한글 등)을 그대로 저장 키로 쓰면 일부 S3 호환 스토리지
+    # (Supabase Storage 등)가 "Invalid key"로 거부한다. 확장자만 남기고
+    # 나머지는 ASCII-safe한 랜덤 값으로 대체 — 버전 구분은 DB의 version
+    # 필드가 담당하므로 파일명 자체가 원본을 보존할 필요는 없다.
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'bin'
+    return f'packaging/{instance.product_id}/{uuid.uuid4().hex}.{ext}'
 
 
 class Product(models.Model):
