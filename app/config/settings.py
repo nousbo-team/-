@@ -169,8 +169,10 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'workflow:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-# 이메일 — .env에 EMAIL_HOST를 채우면 실제 SMTP로 발송(예: 각자 아이디@nousbo.com).
-# 비워두면 콘솔/로그 출력으로만 남는 모의(mock) 발송으로 자동 대체된다.
+# 이메일 — BREVO_API_KEY가 있으면 Brevo HTTPS API로 발송(포트 차단 걱정 없음, 추천).
+# 없고 EMAIL_HOST만 있으면 SMTP로 발송(사내 메일서버 방화벽에 막힐 수 있음).
+# 둘 다 없으면 콘솔/로그 출력으로만 남는 모의(mock) 발송으로 자동 대체된다.
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
 if EMAIL_HOST:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

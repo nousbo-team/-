@@ -2,6 +2,7 @@ Django==6.0.7
 pillow==12.3.0
 openpyxl==3.1.5
 python-dotenv==1.2.2
+requests==2.34.2
 
 # 클라우드 배포(Render + Supabase) 관련
 gunicorn==26.0.0
