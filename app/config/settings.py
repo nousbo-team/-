@@ -178,6 +178,10 @@ if EMAIL_HOST:
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
     EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+    # 타임아웃을 안 주면 SMTP 서버가 응답 없이 멈출 때 소켓 연결이 무한 대기하다가
+    # gunicorn 워커 타임아웃으로 프로세스 전체가 SIGKILL 당한다(요청 실패 정도가
+    # 아니라 서버가 죽는 심각한 문제). 짧게 끊어서 notify.py의 예외 처리로 넘긴다.
+    EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@nousbo.com')
