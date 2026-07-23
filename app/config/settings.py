@@ -141,11 +141,22 @@ if _aws_bucket:
     AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-northeast-2')
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
-    # 버킷명에 점(.)이 있거나(nousbo.team) Supabase 같은 S3 호환 스토리지에서는
-    # virtual-hosted-style(버킷명.엔드포인트) 대신 path-style(엔드포인트/버킷명)을
-    # 써야 서명(Signature)이 맞는다 — 안 하면 SignatureDoesNotMatch 에러가 난다.
-    AWS_S3_ADDRESSING_STYLE = 'path'
-    AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+    # AWS_S3_CLIENT_CONFIG가 설정되면 django-storages는 addressing_style/
+    # signature_version을 별도 설정에서 읽지 않고 이 Config 하나만 사용하므로
+    # 여기에 전부 몰아넣는다.
+    #  - addressing_style='path': 버킷명에 점(.)이 있거나(nousbo.team) Supabase 같은
+    #    S3 호환 스토리지에서는 virtual-hosted-style 대신 path-style을 써야 서명이 맞는다.
+    #  - request/response_checksum_calculation='when_required': boto3가 최근 기본으로
+    #    켠 자동 체크섬(x-amz-checksum-*)을 Supabase Storage가 검증하지 못해
+    #    SignatureDoesNotMatch로 실패하는 문제를 막는다.
+    from botocore.config import Config as _BotoConfig
+    AWS_S3_CLIENT_CONFIG = _BotoConfig(
+        signature_version='s3v4',
+        s3={'addressing_style': 'path'},
+        request_checksum_calculation='when_required',
+        response_checksum_validation='when_required',
+    )
     MEDIA_URL = os.environ.get('MEDIA_URL_OVERRIDE', '/media/')
 else:
     STORAGES['default'] = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
