@@ -141,6 +141,11 @@ if _aws_bucket:
     AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-northeast-2')
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
+    # 버킷명에 점(.)이 있거나(nousbo.team) Supabase 같은 S3 호환 스토리지에서는
+    # virtual-hosted-style(버킷명.엔드포인트) 대신 path-style(엔드포인트/버킷명)을
+    # 써야 서명(Signature)이 맞는다 — 안 하면 SignatureDoesNotMatch 에러가 난다.
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
     MEDIA_URL = os.environ.get('MEDIA_URL_OVERRIDE', '/media/')
 else:
     STORAGES['default'] = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
