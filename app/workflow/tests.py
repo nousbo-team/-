@@ -67,12 +67,29 @@ class WorkflowTestCase(TestCase):
         with self.assertRaises(services.ValidationErrorWF):
             services.final_decision(req, self.approver, 'REJECT', reason='')
 
-    def test_reviewer_cannot_reject(self):
+    def test_reviewer_can_reject(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.reviewer, 'REJECT', reason='표시사항 오류')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.REVIEW1)
+
+    def test_reviewer_cannot_approve_or_request_revision(self):
         req = self._new_request()
         services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
         req.refresh_from_db()
         with self.assertRaises(services.PermissionDeniedError):
-            services.final_decision(req, self.reviewer, 'REJECT', reason='사유')
+            services.final_decision(req, self.reviewer, 'APPROVE')
+        with self.assertRaises(services.PermissionDeniedError):
+            services.final_decision(req, self.reviewer, 'REVISION', reason='수정')
+
+    def test_designer_cannot_reject(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        with self.assertRaises(services.PermissionDeniedError):
+            services.final_decision(req, self.designer, 'REJECT', reason='사유')
 
     def test_designer_only_can_upload(self):
         req = self._new_request()

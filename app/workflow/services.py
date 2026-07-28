@@ -163,8 +163,15 @@ def design_upload(req, actor, ai_file, jpg_file, note=''):
 
 
 def final_decision(req, actor, decision, reason=''):
-    """최종검수(FINAL_REVIEW) 처리. decision: 'APPROVE' | 'REVISION' | 'REJECT'."""
-    if actor not in effective_approvers():
+    """최종검수(FINAL_REVIEW) 처리. decision: 'APPROVE' | 'REVISION' | 'REJECT'.
+
+    반려(REJECT)는 연구소뿐 아니라 1차 검토·관리 창구(브랜드기획팀)도 판단할 수 있다.
+    승인/수정필요(경미)는 여전히 연구소 전용이다.
+    """
+    if decision == 'REJECT':
+        if actor not in effective_approvers() and actor not in effective_reviewers():
+            raise PermissionDeniedError('연구소 또는 1차 검토·관리 창구 담당자만 반려할 수 있습니다.')
+    elif actor not in effective_approvers():
         raise PermissionDeniedError('연구소(최종 검수·반려 판단) 담당자만 처리할 수 있습니다.')
     if req.status != ReorderRequest.Status.FINAL_REVIEW:
         raise ValidationErrorWF('현재 최종검수 단계가 아닙니다.')

@@ -73,6 +73,16 @@
     </div>
   </form>
 
+  {% elif req.status == 'FINAL_REVIEW' and is_reviewer %}
+  <p class="subtitle" style="margin-bottom:10px;">연구소 최종검수 대기 중입니다. 승인/수정필요 처리는 연구소 담당이며, 문제가 있다고 판단되면 사유를 기재하고 반려할 수 있습니다.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="field"><label>반려 사유 (필수)</label><textarea name="reason" placeholder="반려 사유를 입력하세요" required></textarea></div>
+    <div class="actions-row">
+      <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+    </div>
+  </form>
+
   {% elif req.status == 'APPROVED' and is_reviewer %}
   <p class="subtitle" style="margin-bottom:10px;">연구소 승인이 완료되었습니다. 최종파일을 관리하고 울산공장(요청자)에게 전달하세요.</p>
   <form method="post">
