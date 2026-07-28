@@ -3,7 +3,7 @@
 {% block nav_catalog %}active{% endblock %}
 {% block content %}
 <div class="eyebrow">품목코드 {{ product.code }} · {{ product.get_category_display }} · {{ product.get_product_line_display }}</div>
-<h1>{{ product.name }}</h1>
+<h1>{{ product.name }}{% if not product.is_active %} <span class="pill pill-submitted">숨김 처리됨</span>{% endif %}</h1>
 {% if open_request %}
 <p class="subtitle">진행중인 재발주 건이 있습니다 — <a href="{% url 'workflow:request_detail' open_request.pk %}">{{ open_request.request_no }} 보기</a></p>
 {% else %}

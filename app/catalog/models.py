@@ -29,6 +29,10 @@ class Product(models.Model):
     name = models.CharField(max_length=120, verbose_name='품목명')
     category = models.CharField(max_length=20, choices=Category.choices)
     product_line = models.CharField(max_length=20, choices=ProductLine.choices)
+    is_active = models.BooleanField(
+        default=True, verbose_name='표시 여부',
+        help_text='꺼두면 데이터는 유지한 채 품목 목록·검색·신규요청 선택지에서만 숨겨진다(관리자 화면의 "숨기기").',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -40,7 +44,9 @@ class Product(models.Model):
         return f'[{self.code}] {self.name}'
 
     def current_final_file(self):
-        return self.files.filter(status=PackagingFile.Status.FINAL_APPROVED).order_by('-version').first()
+        return self.files.filter(
+            status=PackagingFile.Status.FINAL_APPROVED, is_active=True,
+        ).order_by('-version').first()
 
     def has_open_request(self):
         from workflow.models import ReorderRequest
@@ -59,6 +65,10 @@ class PackagingFile(models.Model):
     jpg_file = models.ImageField(upload_to=packaging_upload_to)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     note = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(
+        default=True, verbose_name='표시 여부',
+        help_text='꺼두면 데이터는 유지한 채 버전 이력·다운로드 목록에서만 숨겨진다(관리자 화면의 "숨기기").',
+    )
 
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='uploaded_files')
     uploaded_at = models.DateTimeField(auto_now_add=True)

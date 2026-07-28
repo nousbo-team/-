@@ -11,7 +11,7 @@ class ProductChoiceField(forms.ModelChoiceField):
 
 
 class NewRequestForm(forms.Form):
-    product = ProductChoiceField(queryset=Product.objects.all(), label='품목')
+    product = ProductChoiceField(queryset=Product.objects.filter(is_active=True), label='품목')
     reason = forms.ChoiceField(choices=ReorderRequest.Reason.choices, label='사유')
 
 

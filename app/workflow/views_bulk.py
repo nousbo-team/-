@@ -18,7 +18,7 @@ PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg)$', re.IGNORECASE)
 
 @login_required
 def bulk_home(request):
-    products = Product.objects.all().order_by('name')
+    products = Product.objects.filter(is_active=True).order_by('name')
     return render(request, 'workflow/bulk.html', {'products': products})
 
 
