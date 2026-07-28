@@ -214,3 +214,30 @@ class WorkflowTestCase(TestCase):
         req.save(update_fields=['status'])
         with self.assertRaises(services.ValidationErrorWF):
             services.final_decision(req, self.approver, 'APPROVE')
+
+
+class NoProfileAccountTestCase(TestCase):
+    """nousbo 같은 프로필 없는(super)유저가 일반 화면에 들어와도 500이 나면 안 된다."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_no_profile', password='x', is_staff=True, is_superuser=True)
+        self.product = Product.objects.create(
+            code='NP-0001', name='프로필없음 테스트', category=Product.Category.LABEL,
+            product_line=Product.ProductLine.FERTILIZER)
+        self.client.login(username='admin_no_profile', password='x')
+
+    def test_dashboard_shows_no_profile_page_instead_of_crashing(self):
+        resp = self.client.get('/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, 'workflow/no_profile.html')
+
+    def test_new_request_redirects_instead_of_crashing(self):
+        resp = self.client.get('/requests/new/', follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_request_detail_renders_instead_of_crashing(self):
+        req = ReorderRequest.objects.create(
+            request_no='RQ-TEST-NP-001', product=self.product, requester=self.admin,
+            reason=ReorderRequest.Reason.STOCK_SHORTAGE, status=ReorderRequest.Status.REVIEW1)
+        resp = self.client.get(f'/requests/{req.pk}/')
+        self.assertEqual(resp.status_code, 200)

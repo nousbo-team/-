@@ -33,3 +33,11 @@ class UserProfile(models.Model):
         if self.is_away and self.backup_user_id:
             users.append(self.backup_user)
         return users
+
+
+def get_profile(user):
+    """user.profile을 안전하게 조회한다. nousbo 같은 슈퍼유저는 업무 프로필이
+    없을 수 있는데, `request.user.profile`을 직접 쓰면 RelatedObjectDoesNotExist가
+    그대로 터진다(getattr의 기본값 처리로는 못 막음 — 평가 자체가 이미 실패하기 때문).
+    반드시 이 함수를 통해 조회할 것."""
+    return getattr(user, 'profile', None)

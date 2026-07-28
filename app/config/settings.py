@@ -123,8 +123,16 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# 해시 매니페스트 스토리지는 collectstatic을 거쳐야 동작한다(Render 빌드 시 자동 실행).
+# 로컬 개발/테스트(runserver, manage.py test)에서는 collectstatic 없이도 바로
+# 동작하도록 DEBUG일 때만 일반 스토리지로 폴백한다.
 STORAGES = {
-    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
 }
 
 # 업로드 파일(포장지 AI/JPG) 저장 위치.

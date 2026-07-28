@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from accounts.models import UserProfile
+from accounts.models import UserProfile, get_profile
 
 from . import services
 from .forms import DesignUploadForm, NewRequestForm
@@ -14,7 +14,9 @@ from .models import ReorderRequest
 
 @login_required
 def dashboard(request):
-    profile = request.user.profile
+    profile = get_profile(request.user)
+    if not profile:
+        return render(request, 'workflow/no_profile.html')
     role = profile.role
     Status = ReorderRequest.Status
 
@@ -48,7 +50,8 @@ def dashboard(request):
 
 @login_required
 def new_request(request):
-    if request.user.profile.role != UserProfile.Role.REQUESTER:
+    profile = get_profile(request.user)
+    if not profile or profile.role != UserProfile.Role.REQUESTER:
         messages.error(request, '요청자(울산공장)만 재발주를 등록할 수 있습니다.')
         return redirect('workflow:dashboard')
 
@@ -122,7 +125,7 @@ def request_detail(request, pk):
         'events': events,
         'design_form': DesignUploadForm(),
         'is_reviewer': request.user in services.effective_reviewers(),
-        'is_designer': getattr(request.user.profile, 'role', None) == UserProfile.Role.DESIGNER,
+        'is_designer': getattr(get_profile(request.user), 'role', None) == UserProfile.Role.DESIGNER,
         'is_approver': request.user in services.effective_approvers(),
         'exception_available': bool(req.current_file and req.current_file.within_exception_window()),
     })

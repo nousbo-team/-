@@ -2,12 +2,17 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
+from .models import get_profile
+
 
 @login_required
 def toggle_away(request):
     """리뷰어(1차 검토·관리 창구)가 부재중 여부를 토글한다 — 대체 담당자 라우팅(P0-8)."""
     if request.method == 'POST':
-        profile = request.user.profile
+        profile = get_profile(request.user)
+        if not profile:
+            messages.error(request, '이 계정에는 담당자 프로필이 없어 부재중 설정을 사용할 수 없습니다.')
+            return redirect('workflow:dashboard')
         profile.is_away = not profile.is_away
         profile.save(update_fields=['is_away'])
         if profile.is_away:
