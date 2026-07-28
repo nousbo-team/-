@@ -107,7 +107,7 @@
       {% if e.actor %}— {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}
       {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
     </div>
-    {% if e.note %}<div style="font-size:13px;">{{ e.note }}</div>{% endif %}
+    {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
     <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
   </li>
   {% endfor %}

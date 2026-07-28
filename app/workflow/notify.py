@@ -6,6 +6,10 @@
 
 카카오톡/문자는 발신 API 계약(알림톡 등)이 아직 없어(PRD Open Question) 항상 로그로만
 남기는 모의 발송이다 — 계약 체결 후 send_kakao_mock 내부만 실제 API 호출로 교체하면 된다.
+
+두 함수 모두 (status, detail) 튜플을 반환한다. status는 'sent' | 'failed' | 'mock'
+(recipients가 아예 없으면 'no_recipients') — 이력 타임라인에 채널별 성공 여부를
+표시하기 위해 services.py에서 사용한다.
 """
 import logging
 
@@ -16,10 +20,6 @@ from django.core.mail import send_mail
 logger = logging.getLogger('workflow.notify')
 
 BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
-
-
-def is_real_email_enabled():
-    return bool(settings.BREVO_API_KEY) or bool(settings.EMAIL_HOST)
 
 
 def _send_via_brevo(recipients, subject, message):
@@ -44,26 +44,30 @@ def _send_via_brevo(recipients, subject, message):
 def send_email_mock(users, subject, message):
     recipients = [u.email for u in users if u.email]
     if not recipients:
-        return
+        return 'no_recipients', ''
 
     if settings.BREVO_API_KEY:
         try:
             _send_via_brevo(recipients, subject, message)
             logger.info('[EMAIL:BREVO] to=%s subject=%s', recipients, subject)
-            return
+            return 'sent', 'Brevo'
         except Exception:
             logger.exception('[EMAIL:BREVO] 발송 실패 — 로그로만 남김. to=%s subject=%s', recipients, subject)
+            return 'failed', 'Brevo'
     elif settings.EMAIL_HOST:
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipients, fail_silently=False)
             logger.info('[EMAIL:SMTP] to=%s subject=%s', recipients, subject)
-            return
+            return 'sent', 'SMTP'
         except Exception:
             logger.exception('[EMAIL:SMTP] 발송 실패 — 로그로만 남김. to=%s subject=%s', recipients, subject)
+            return 'failed', 'SMTP'
 
     logger.info('[MOCK EMAIL] to=%s subject=%s body=%s', recipients, subject, message)
+    return 'mock', ''
 
 
 def send_kakao_mock(users, message):
     for u in users:
         logger.info('[MOCK KAKAO/SMS] to=%s message=%s', u.username, message)
+    return 'mock', ''

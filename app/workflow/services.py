@@ -9,7 +9,14 @@ from accounts.models import UserProfile
 from catalog.models import PackagingFile
 
 from .models import Notification, RequestEvent, ReorderRequest
-from .notify import is_real_email_enabled, send_email_mock, send_kakao_mock
+from .notify import send_email_mock, send_kakao_mock
+
+_NOTIFY_STATUS_LABEL = {
+    'sent': '발송 성공',
+    'failed': '발송 실패(로그 확인 필요)',
+    'mock': '모의 — 실제 미발송',
+    'no_recipients': '수신자 없음',
+}
 
 
 class WorkflowError(Exception):
@@ -72,20 +79,29 @@ def _generate_request_no():
 
 
 def _notify(req, users, message, kakao=False):
+    """알림 발송. 이메일(항상 시도) + 카카오톡/문자(kakao=True일 때만)를 한 건의
+    이력 항목으로 합쳐 기록한다 — 수신자 아이디와 채널별 성공 여부를 함께 남긴다."""
     for u in users:
         Notification.objects.create(user=u, request=req, message=message)
-    send_email_mock(users, f'[{req.request_no}] {req.product.name}', message)
-    email_label = '이메일 발송' if is_real_email_enabled() else '이메일(모의) 발송'
+
+    recipient_names = ', '.join(u.username for u in users) or '(대상 없음)'
+    email_status, email_detail = send_email_mock(
+        users, f'[{req.request_no}] {req.product.name}', message)
+
+    lines = [f'수신자: {recipient_names}', message, '']
+    email_line = f'· 이메일: {_NOTIFY_STATUS_LABEL[email_status]}'
+    if email_detail:
+        email_line += f' ({email_detail})'
+    lines.append(email_line)
+
+    if kakao:
+        kakao_status, _ = send_kakao_mock(users, message)
+        lines.append(f'· 카카오톡/문자: {_NOTIFY_STATUS_LABEL[kakao_status]}')
+
     RequestEvent.objects.create(
         request=req, actor=None, action=RequestEvent.Action.NOTIFY,
-        note=f'{email_label}: {message}', channel=RequestEvent.Channel.EMAIL_MOCK,
+        note='\n'.join(lines), channel=RequestEvent.Channel.SYSTEM,
     )
-    if kakao:
-        send_kakao_mock(users, message)
-        RequestEvent.objects.create(
-            request=req, actor=None, action=RequestEvent.Action.NOTIFY,
-            note=f'카카오톡/문자(모의) 발송: {message}', channel=RequestEvent.Channel.KAKAO_MOCK,
-        )
 
 
 def create_request(product, requester, reason):
