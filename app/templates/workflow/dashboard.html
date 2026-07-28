@@ -13,7 +13,7 @@
 <div class="card table-wrap">
   {% if my_requests %}
   <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>등록일</th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>등록일</th><th></th></tr></thead>
     <tbody>
       {% for r in my_requests %}
       <tr>
@@ -22,6 +22,16 @@
         <td>{{ r.get_reason_display }}</td>
         <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td>{{ r.created_at|date:'Y-m-d H:i' }}</td>
+        <td>
+          {% if r.status != 'COMPLETED' and r.status != 'CANCELLED' %}
+          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '요청을 취소하시겠습니까?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="cancel">
+            <input type="hidden" name="reason">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">요청 취소</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -38,7 +48,7 @@
   <div class="empty-state">{{ empty_hint }}</div>
   {% elif pending %}
   <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>요청자</th><th>대기 경과</th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>요청자</th><th>대기 경과</th><th></th></tr></thead>
     <tbody>
       {% for r in pending %}
       <tr>
@@ -47,6 +57,29 @@
         <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td>{{ r.requester.get_full_name|default:r.requester.username }}</td>
         <td{% if r.updated_at < stale_cutoff %} style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}</td>
+        <td>
+          {% if role == 'REVIEWER' and r.status == 'REVIEW1' %}
+          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '요청을 취소하시겠습니까?');">
+            {% csrf_token %}<input type="hidden" name="action" value="cancel"><input type="hidden" name="reason">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려(취소)</button>
+          </form>
+          {% elif role == 'REVIEWER' and r.status == 'APPROVED' %}
+          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '승인을 취소하고 최종검수 단계로 되돌리시겠습니까?');">
+            {% csrf_token %}<input type="hidden" name="action" value="revert_approval"><input type="hidden" name="reason">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">승인 취소</button>
+          </form>
+          {% elif role == 'DESIGNER' and r.status == 'DESIGN_EDIT' %}
+          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '1차검토로 반려하시겠습니까?');">
+            {% csrf_token %}<input type="hidden" name="action" value="design_reject"><input type="hidden" name="reason">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려</button>
+          </form>
+          {% elif role == 'APPROVER' and r.status == 'FINAL_REVIEW' %}
+          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '반려하시겠습니까?');">
+            {% csrf_token %}<input type="hidden" name="action" value="final_reject"><input type="hidden" name="reason">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -56,4 +89,19 @@
   {% endif %}
 </div>
 {% endif %}
+
+<script>
+function quickReject(formEl, confirmMessage) {
+  if (!window.confirm(confirmMessage)) return false;
+  var reason = window.prompt('사유를 입력하세요 (필수)');
+  if (reason === null) return false;
+  reason = reason.trim();
+  if (!reason) {
+    window.alert('사유를 입력해야 합니다.');
+    return false;
+  }
+  formEl.querySelector('input[name="reason"]').value = reason;
+  return true;
+}
+</script>
 {% endblock %}

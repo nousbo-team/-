@@ -215,6 +215,103 @@ class WorkflowTestCase(TestCase):
         with self.assertRaises(services.ValidationErrorWF):
             services.final_decision(req, self.approver, 'APPROVE')
 
+    def test_requester_can_cancel_own_request(self):
+        req = self._new_request()
+        services.cancel_request(req, self.requester, reason='재고 확보됨')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.CANCELLED)
+
+    def test_requester_cannot_cancel_after_completion(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL', use_exception=True)
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.COMPLETED)
+        with self.assertRaises(services.ValidationErrorWF):
+            services.cancel_request(req, self.requester, reason='늦은 취소')
+
+    def test_cancel_requires_reason(self):
+        req = self._new_request()
+        with self.assertRaises(services.ValidationErrorWF):
+            services.cancel_request(req, self.requester, reason='')
+
+    def test_reviewer_can_cancel_at_review1(self):
+        req = self._new_request()
+        services.cancel_request(req, self.reviewer, reason='중복 요청')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.CANCELLED)
+
+    def test_reviewer_cannot_cancel_at_design_edit(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        with self.assertRaises(services.PermissionDeniedError):
+            services.cancel_request(req, self.reviewer, reason='임의 취소 시도')
+
+    def test_other_role_cannot_cancel(self):
+        req = self._new_request()
+        with self.assertRaises(services.PermissionDeniedError):
+            services.cancel_request(req, self.designer, reason='권한 없음')
+
+    def test_designer_reject_reverts_to_review1(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.DESIGN_EDIT)
+        services.design_reject(req, self.designer, reason='요청 내용 불명확')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.REVIEW1)
+
+    def test_design_reject_requires_reason(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        with self.assertRaises(services.ValidationErrorWF):
+            services.design_reject(req, self.designer, reason='')
+
+    def test_design_reject_wrong_stage(self):
+        req = self._new_request()
+        with self.assertRaises(services.ValidationErrorWF):
+            services.design_reject(req, self.designer, reason='사유')
+
+    def test_reviewer_can_revert_approval_to_final_review(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.approver, 'APPROVE')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.APPROVED)
+        services.revert_approval(req, self.reviewer, reason='라벨 재검토 필요')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.FINAL_REVIEW)
+
+    def test_revert_approval_wrong_stage(self):
+        req = self._new_request()
+        with self.assertRaises(services.ValidationErrorWF):
+            services.revert_approval(req, self.reviewer, reason='사유')
+
+    def test_revert_approval_permission(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.approver, 'APPROVE')
+        req.refresh_from_db()
+        with self.assertRaises(services.PermissionDeniedError):
+            services.revert_approval(req, self.approver, reason='사유')
+
+    def test_cancel_notifies_history_participants(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        ai = ContentFile(b'ai2', name='t2.ai')
+        jpg = ContentFile(_jpg_bytes(), name='t2.jpg')
+        services.design_upload(req, self.designer, ai, jpg)
+        req.refresh_from_db()
+        services.cancel_request(req, self.requester, reason='취소 사유')
+        notified_users = set(req.notifications.values_list('user', flat=True))
+        self.assertIn(self.requester.pk, notified_users)
+        self.assertIn(self.reviewer.pk, notified_users)
+        self.assertIn(self.designer.pk, notified_users)
+
 
 class NoProfileAccountTestCase(TestCase):
     """nousbo 같은 프로필 없는(super)유저가 일반 화면에 들어와도 500이 나면 안 된다."""

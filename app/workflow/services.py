@@ -104,6 +104,14 @@ def _notify(req, users, message, kakao=False):
     )
 
 
+def _notify_history(req, message, kakao=False):
+    """요청 취소·이전단계 반려 시, 요청자와 지금까지 이 건을 처리했던 모든 담당자
+    (본인 포함)에게 알린다 — 되돌려진 사실을 이전 담당자들도 알아야 하므로."""
+    participants = {req.requester}
+    participants.update(e.actor for e in req.events.all() if e.actor)
+    _notify(req, list(participants), message, kakao=kakao)
+
+
 def create_request(product, requester, reason):
     """재발주 요청 등록(P0-3). 동일 제품에 진행중인 건이 있으면 (None, 기존건)을 반환."""
     existing = product.has_open_request()
@@ -214,6 +222,61 @@ def final_decision(req, actor, decision, reason=''):
                     f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}', kakao=(decision == 'REJECT'))
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
+    return req
+
+
+def cancel_request(req, actor, reason):
+    """요청 취소. 요청자 본인은 완료·취소 전 어느 단계에서나, 1차 검토·관리 창구는
+    1차검토중(REVIEW1) 단계에서만 취소할 수 있다(그 이전 단계가 없으므로 반려=취소)."""
+    if req.status in ReorderRequest.TERMINAL_STATUSES:
+        raise ValidationErrorWF('이미 완료되었거나 취소된 건입니다.')
+    is_requester = actor == req.requester
+    is_reviewer_at_review1 = req.status == ReorderRequest.Status.REVIEW1 and actor in effective_reviewers()
+    if not (is_requester or is_reviewer_at_review1):
+        raise PermissionDeniedError('요청자 본인 또는 1차 검토·관리 창구 담당자만 취소할 수 있습니다.')
+    if not reason.strip():
+        raise ValidationErrorWF('취소 사유는 필수입니다.')
+
+    with transaction.atomic():
+        req.status = ReorderRequest.Status.CANCELLED
+        req.save(update_fields=['status', 'updated_at'])
+        _log(req, actor, RequestEvent.Action.CANCELLED, note=reason)
+        _notify_history(req, f'"{req.product.name}" 재발주 건이 취소되었습니다. 사유: {reason}', kakao=True)
+    return req
+
+
+def design_reject(req, actor, reason):
+    """디자이너가 배정된 수정 작업을 반려 — 1차검토로 되돌린다."""
+    if req.status != ReorderRequest.Status.DESIGN_EDIT:
+        raise ValidationErrorWF('현재 디자인 수정 단계가 아닙니다.')
+    if actor not in effective_designers():
+        raise PermissionDeniedError('디자인 담당자만 반려할 수 있습니다.')
+    if not reason.strip():
+        raise ValidationErrorWF('반려 사유는 필수입니다.')
+
+    with transaction.atomic():
+        req.status = ReorderRequest.Status.REVIEW1
+        req.save(update_fields=['status', 'updated_at'])
+        _log(req, actor, RequestEvent.Action.DESIGN_REJECT, note=reason)
+        _notify_history(req, f'"{req.product.name}" 디자인 담당자가 반려했습니다. 사유: {reason}', kakao=True)
+    return req
+
+
+def revert_approval(req, actor, reason):
+    """1차 검토·관리 창구가 이미 연구소 승인된(전달 대기) 건을 최종검수중으로 되돌린다."""
+    if req.status != ReorderRequest.Status.APPROVED:
+        raise ValidationErrorWF('현재 전달 대기 단계가 아닙니다.')
+    if actor not in effective_reviewers():
+        raise PermissionDeniedError('1차 검토·관리 창구 담당자만 되돌릴 수 있습니다.')
+    if not reason.strip():
+        raise ValidationErrorWF('되돌리기 사유는 필수입니다.')
+
+    with transaction.atomic():
+        req.status = ReorderRequest.Status.FINAL_REVIEW
+        req.save(update_fields=['status', 'updated_at'])
+        _log(req, actor, RequestEvent.Action.APPROVAL_REVERTED, note=reason)
+        _notify_history(
+            req, f'"{req.product.name}" 승인이 취소되고 최종검수 단계로 되돌아갔습니다. 사유: {reason}', kakao=True)
     return req
 
 

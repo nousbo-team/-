@@ -112,6 +112,18 @@ def request_detail(request, pk):
             elif action == 'handoff':
                 services.handoff(req, request.user)
                 messages.success(request, '최종파일을 전달하고 완료 처리했습니다.')
+            elif action == 'cancel':
+                reason = request.POST.get('reason', '')
+                services.cancel_request(req, request.user, reason)
+                messages.success(request, '요청을 취소했습니다.')
+            elif action == 'design_reject':
+                reason = request.POST.get('reason', '')
+                services.design_reject(req, request.user, reason)
+                messages.success(request, '디자인 작업을 반려하고 1차검토로 되돌렸습니다.')
+            elif action == 'revert_approval':
+                reason = request.POST.get('reason', '')
+                services.revert_approval(req, request.user, reason)
+                messages.success(request, '승인을 취소하고 최종검수 단계로 되돌렸습니다.')
             else:
                 messages.error(request, '알 수 없는 요청입니다.')
         except services.PermissionDeniedError as e:

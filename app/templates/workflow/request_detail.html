@@ -93,6 +93,9 @@
   {% elif req.status == 'COMPLETED' %}
   <div class="empty-state">완료된 건입니다. 최종 승인본은 위 "현재 파일"에서 다운로드할 수 있습니다.</div>
 
+  {% elif req.status == 'CANCELLED' %}
+  <div class="empty-state">취소된 건입니다.</div>
+
   {% else %}
   <div class="empty-state">현재 단계에서 처리 권한이 없습니다 — 담당자를 기다려주세요.</div>
   {% endif %}

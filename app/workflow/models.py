@@ -12,8 +12,9 @@ class ReorderRequest(models.Model):
         FINAL_REVIEW = 'FINAL_REVIEW', '최종검수중'
         APPROVED = 'APPROVED', '승인(전달 대기)'
         COMPLETED = 'COMPLETED', '완료'
+        CANCELLED = 'CANCELLED', '취소됨'
 
-    TERMINAL_STATUSES = {Status.COMPLETED}
+    TERMINAL_STATUSES = {Status.COMPLETED, Status.CANCELLED}
 
     class Reason(models.TextChoices):
         STOCK_SHORTAGE = 'STOCK_SHORTAGE', '재고 소진(임박)'
@@ -46,6 +47,7 @@ class ReorderRequest(models.Model):
             self.Status.FINAL_REVIEW: 'pill-final',
             self.Status.APPROVED: 'pill-approved',
             self.Status.COMPLETED: 'pill-completed',
+            self.Status.CANCELLED: 'pill-rejected',
         }[self.Status(self.status)]
 
 
@@ -61,6 +63,9 @@ class RequestEvent(models.Model):
         HANDOFF = 'HANDOFF', '최종파일 전달 · 완료'
         EXCEPTION_SKIP = 'EXCEPTION_SKIP', '3개월 예외 적용(최종검수 생략)'
         NOTIFY = 'NOTIFY', '알림 발송'
+        CANCELLED = 'CANCELLED', '요청 취소'
+        DESIGN_REJECT = 'DESIGN_REJECT', '디자인 반려(1차검토로)'
+        APPROVAL_REVERTED = 'APPROVAL_REVERTED', '승인 취소(최종검수로 되돌림)'
 
     class Channel(models.TextChoices):
         SYSTEM = 'SYSTEM', '시스템'
