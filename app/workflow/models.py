@@ -25,6 +25,7 @@ class ReorderRequest(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='requests')
     requester = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='requests_made')
     reason = models.CharField(max_length=20, choices=Reason.choices)
+    detail = models.TextField(blank=True, help_text='요청자가 남긴 구체적인 요청사항(선택)')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.REVIEW1)
     current_file = models.ForeignKey(PackagingFile, null=True, blank=True, on_delete=models.SET_NULL, related_name='requests')
     used_exception = models.BooleanField(default=False, help_text='3개월 이내 승인 예외로 최종검수를 생략했는지 여부')
@@ -49,6 +50,44 @@ class ReorderRequest(models.Model):
             self.Status.COMPLETED: 'pill-completed',
             self.Status.CANCELLED: 'pill-rejected',
         }[self.Status(self.status)]
+
+    # 대시보드에 "지금 어느 단계인지" 한눈에 보여주기 위한 간단한 흐름 표시(P0-5 보강).
+    # 실제 이력(RequestEvent)을 조회하지 않고 현재 status만으로 계산하는 가벼운 요약이라,
+    # 디자인수정 루프를 여러 번 거쳤어도 "지금" 기준으로만 위치를 보여준다.
+    _FLOW_ORDER = [Status.REVIEW1, Status.FINAL_REVIEW, Status.APPROVED, Status.COMPLETED]
+    _FLOW_LABELS = ['1차검토', '최종검수', '전달대기', '완료']
+
+    def flow_progress(self):
+        status = self.Status(self.status)
+        cancelled = status == self.Status.CANCELLED
+        completed = status == self.Status.COMPLETED
+        design_edit = status == self.Status.DESIGN_EDIT
+
+        if cancelled:
+            current_index = -1
+        elif design_edit:
+            current_index = 0  # 디자인수정은 1차검토 루프 중이므로 그 위치에 표시
+        else:
+            try:
+                current_index = self._FLOW_ORDER.index(status)
+            except ValueError:
+                current_index = 0
+
+        steps = []
+        for i, label in enumerate(self._FLOW_LABELS):
+            if cancelled:
+                state = 'cancelled'
+            elif completed:
+                state = 'done'
+            elif i < current_index:
+                state = 'done'
+            elif i == current_index:
+                state = 'current'
+            else:
+                state = 'pending'
+            steps.append({'label': label, 'state': state})
+
+        return {'steps': steps, 'design_edit': design_edit, 'cancelled': cancelled}
 
 
 class RequestEvent(models.Model):

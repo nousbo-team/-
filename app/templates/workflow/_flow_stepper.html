@@ -1,0 +1,13 @@
+{% with flow=r.flow_progress %}
+<div class="flow-stepper{% if flow.cancelled %} flow-cancelled{% endif %}">
+  {% for step in flow.steps %}
+  <div class="flow-step flow-step-{{ step.state }}">
+    <span class="flow-dot"></span>
+    <span class="flow-label">{{ step.label }}</span>
+  </div>
+  {% if not forloop.last %}<span class="flow-line flow-line-{{ step.state }}"></span>{% endif %}
+  {% endfor %}
+</div>
+{% if flow.design_edit %}<div class="flow-note flow-note-design">↳ 디자인수정중</div>{% endif %}
+{% if flow.cancelled %}<div class="flow-note flow-note-cancelled">✕ 취소됨</div>{% endif %}
+{% endwith %}

@@ -112,7 +112,7 @@ def _notify_history(req, message, kakao=False):
     _notify(req, list(participants), message, kakao=kakao)
 
 
-def create_request(product, requester, reason):
+def create_request(product, requester, reason, detail=''):
     """재발주 요청 등록(P0-3). 동일 제품에 진행중인 건이 있으면 (None, 기존건)을 반환."""
     existing = product.has_open_request()
     if existing:
@@ -121,12 +121,14 @@ def create_request(product, requester, reason):
     with transaction.atomic():
         req = ReorderRequest.objects.create(
             request_no=_generate_request_no(),
-            product=product, requester=requester, reason=reason,
+            product=product, requester=requester, reason=reason, detail=detail,
             status=ReorderRequest.Status.REVIEW1,
             current_file=product.current_final_file(),
         )
-        _log(req, requester, RequestEvent.Action.SUBMITTED,
-             note=f'재발주 요청 등록 ({req.get_reason_display()}) · 최종본 확인 요청')
+        note = f'재발주 요청 등록 ({req.get_reason_display()}) · 최종본 확인 요청'
+        if detail.strip():
+            note += f'\n요청사항: {detail.strip()}'
+        _log(req, requester, RequestEvent.Action.SUBMITTED, note=note)
         _notify(req, effective_reviewers(),
                 f'"{product.name}" 재발주 요청이 등록되었습니다. 최종본 확인이 필요합니다.', kakao=True)
     return req, None

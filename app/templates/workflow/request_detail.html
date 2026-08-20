@@ -8,6 +8,9 @@
   · 사유 {{ req.get_reason_display }} · 요청자 {{ req.requester.get_full_name|default:req.requester.username }}
   · 등록 {{ req.created_at|date:'Y-m-d H:i' }}
 </p>
+{% if req.detail %}
+<p class="subtitle" style="margin-top:-8px;">요청사항: {{ req.detail|linebreaksbr }}</p>
+{% endif %}
 
 <h2>현재 파일</h2>
 <div class="card">

@@ -13,7 +13,7 @@
 <div class="card table-wrap">
   {% if my_requests %}
   <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>등록일</th><th></th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>진행 흐름</th><th>등록일</th><th></th></tr></thead>
     <tbody>
       {% for r in my_requests %}
       <tr>
@@ -21,6 +21,7 @@
         <td>{{ r.product.name }}</td>
         <td>{{ r.get_reason_display }}</td>
         <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td>{% include 'workflow/_flow_stepper.html' %}</td>
         <td>{{ r.created_at|date:'Y-m-d H:i' }}</td>
         <td>
           {% if r.status != 'COMPLETED' and r.status != 'CANCELLED' %}
@@ -48,13 +49,14 @@
   <div class="empty-state">{{ empty_hint }}</div>
   {% elif pending %}
   <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>요청자</th><th>대기 경과</th><th></th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>요청자</th><th>대기 경과</th><th></th></tr></thead>
     <tbody>
       {% for r in pending %}
       <tr>
         <td><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
         <td>{{ r.product.name }}</td>
         <td><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td>{% include 'workflow/_flow_stepper.html' %}</td>
         <td>{{ r.requester.get_full_name|default:r.requester.username }}</td>
         <td{% if r.updated_at < stale_cutoff %} style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}</td>
         <td>

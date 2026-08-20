@@ -64,7 +64,8 @@ def new_request(request):
         form = NewRequestForm(request.POST)
         if form.is_valid():
             req, existing = services.create_request(
-                form.cleaned_data['product'], request.user, form.cleaned_data['reason'])
+                form.cleaned_data['product'], request.user, form.cleaned_data['reason'],
+                detail=form.cleaned_data['detail'])
             if existing:
                 messages.warning(
                     request,

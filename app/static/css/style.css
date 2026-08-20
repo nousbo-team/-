@@ -136,4 +136,29 @@ form.inline { display: inline; }
 .login-box h1 { text-align: center; }
 .login-box .subtitle { text-align: center; }
 .demo-accounts { margin-top: 18px; font-size: 12px; color: var(--ink-soft); }
+
+/* 대시보드 — 요청건별 진행 흐름 미니 스텝퍼 */
+.flow-stepper { display: flex; align-items: center; white-space: nowrap; }
+.flow-step { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 46px; flex-shrink: 0; }
+.flow-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--paper-raised); border: 2px solid var(--line); }
+.flow-label { font-size: 9.5px; color: var(--ink-soft); text-align: center; line-height: 1.15; }
+.flow-line { flex: 1 0 10px; height: 2px; background: var(--line); margin: 0 -4px 15px; min-width: 10px; }
+
+.flow-step-done .flow-dot { background: var(--accent); border-color: var(--accent); }
+.flow-step-done .flow-label { color: var(--accent-ink); }
+.flow-line-done { background: var(--accent); }
+
+.flow-step-current .flow-dot { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.flow-step-current .flow-label { color: var(--accent-ink); font-weight: 700; }
+
+.flow-step-pending .flow-dot { background: var(--paper-raised); border-color: var(--line); }
+.flow-step-pending .flow-label { color: var(--ink-soft); opacity: .7; }
+
+.flow-cancelled .flow-dot { background: var(--paper-raised); border-color: var(--line); }
+.flow-cancelled .flow-label { color: var(--ink-soft); opacity: .5; }
+.flow-line-cancelled { background: var(--line); }
+
+.flow-note { font-size: 10.5px; margin-top: 3px; font-weight: 700; }
+.flow-note-design { color: var(--kraft); }
+.flow-note-cancelled { color: var(--danger); }
 .demo-accounts code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
