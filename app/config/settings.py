@@ -105,6 +105,14 @@ else:
         }
     }
 
+# 로컬 개발 DB(SQLite)를 운영(Supabase) 최신 데이터로 맞추는 sync_from_prod 명령 전용 —
+# 'default'는 항상 로컬 그대로 두고, 운영은 이 별도 alias로만 "읽어서 로컬로 복사"한다
+# (로컬 실수로 운영에 쓰기가 되는 사고를 원천 차단).
+_prod_database_url = os.environ.get('PROD_DATABASE_URL')
+if _prod_database_url:
+    import dj_database_url as _dj_database_url
+    DATABASES['prod'] = _dj_database_url.parse(_prod_database_url, conn_max_age=0)
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
