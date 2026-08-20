@@ -14,7 +14,7 @@
   </ul>
   <p style="color:var(--ink-soft);font-size:13.5px;">삭제 후 데모 품목 3건(승인본 포함)을 자동으로 다시 채워 넣어, 곧바로 재테스트를 시작할 수 있는 상태로 만듭니다.</p>
 
-  <form method="post" onsubmit="return window.confirm('테스트 데이터를 정말 초기화할까요? 이 작업은 되돌릴 수 없습니다.');">
+  <form method="post">
     {% csrf_token %}
     <button class="btn btn-danger" type="submit">지금 초기화하기</button>
     <a class="btn btn-ghost" href="{% url 'workflow:dashboard' %}">취소하고 대시보드로</a>
