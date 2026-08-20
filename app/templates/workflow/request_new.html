@@ -12,7 +12,10 @@
     {% csrf_token %}
     <div class="field">
       <label for="id_product">품목 (품목코드 - 품목명)</label>
+      <input type="text" id="product-filter" placeholder="품목명 또는 품목코드로 검색" autocomplete="off"
+             style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;margin-bottom:6px;">
       {{ form.product }}
+      <div class="hint" id="product-filter-count"></div>
     </div>
     <div class="field">
       <label for="id_reason">재발주 요청</label>
@@ -25,4 +28,32 @@
     <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">요청 등록</button>
   </form>
 </div>
+
+<script>
+(function(){
+  var filterInput = document.getElementById('product-filter');
+  var select = document.getElementById('id_product');
+  var countEl = document.getElementById('product-filter-count');
+  if (!filterInput || !select) return;
+  var options = Array.prototype.slice.call(select.options).filter(function(o){ return o.value; });
+  var placeholder = select.querySelector('option[value=""]');
+
+  function applyFilter(){
+    var q = filterInput.value.trim().toLowerCase();
+    var visibleCount = 0;
+    options.forEach(function(o){
+      var match = !q || o.textContent.toLowerCase().indexOf(q) !== -1;
+      o.hidden = !match;
+      if (match) visibleCount++;
+    });
+    if (placeholder) placeholder.hidden = false;
+    countEl.textContent = q ? visibleCount + '건 일치' : '';
+    // 검색 결과가 현재 선택된 값과 다르면 선택을 안내 문구로 되돌린다.
+    if (select.value && select.options[select.selectedIndex] && select.options[select.selectedIndex].hidden) {
+      select.value = '';
+    }
+  }
+  filterInput.addEventListener('input', applyFilter);
+})();
+</script>
 {% endblock %}
