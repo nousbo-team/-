@@ -6,23 +6,45 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from workflow.models import ReorderRequest
+
 from .forms import ProductMasterImportForm
 from .models import PackagingFile, Product
 
 
 @login_required
 def product_list(request):
+    """품목 하나마다 current_final_file()/has_open_request() 등을 호출하면 품목 수만큼
+    쿼리가 늘어난다 — 품목이 수백 건 규모가 되면 요청 하나가 원격 DB 왕복을 수백 번
+    반복하게 되어 워커 타임아웃(502/500)으로 이어진다. 파일·재발주 건을 각각 한 번씩만
+    조회해 품목별로 파이썬에서 묶는다."""
     q = request.GET.get('q', '').strip()
     products = Product.objects.filter(is_active=True)
     if q:
         products = products.filter(Q(name__icontains=q) | Q(code__icontains=q))
+    products = list(products)
+    product_ids = [p.pk for p in products]
+
+    files_by_product = {}
+    for f in PackagingFile.objects.filter(product_id__in=product_ids, is_active=True).order_by('product_id', '-version'):
+        files_by_product.setdefault(f.product_id, []).append(f)
+
+    open_request_by_product = {}
+    for r in (ReorderRequest.objects
+              .filter(product_id__in=product_ids)
+              .exclude(status__in=ReorderRequest.TERMINAL_STATUSES)
+              .order_by('product_id', '-created_at')):
+        open_request_by_product.setdefault(r.product_id, r)  # 품목별로 가장 최근 건만 남김
+
     rows = []
     for p in products:
+        files = files_by_product.get(p.pk, [])
+        final_file = next((f for f in files if f.status == PackagingFile.Status.FINAL_APPROVED), None)
         rows.append({
             'product': p,
-            'final_file': p.current_final_file(),
-            'version_count': p.files.filter(is_active=True).count(),
-            'open_request': p.has_open_request(),
+            'final_file': final_file,
+            'version_count': len(files),
+            'open_request': open_request_by_product.get(p.pk),
         })
     return render(request, 'catalog/product_list.html', {'rows': rows, 'q': q})
 
