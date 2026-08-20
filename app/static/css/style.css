@@ -16,7 +16,7 @@
   --danger: #a53e2b;
   --danger-soft: #f4ded8;
   --shadow: 0 1px 2px rgba(30, 35, 31, .06), 0 8px 24px -12px rgba(30, 35, 31, .18);
-  --font: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+  --font: 'Gothic A1', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
 }
 
 * { box-sizing: border-box; }
