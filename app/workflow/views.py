@@ -12,6 +12,11 @@ from .forms import DesignUploadForm, NewRequestForm
 from .models import ReorderRequest
 
 
+def guide(request):
+    """역할별 사용 매뉴얼 — 로그인 없이 누구나 볼 수 있는 공개 안내 페이지."""
+    return render(request, 'guide.html')
+
+
 @login_required
 def dashboard(request):
     profile = get_profile(request.user)
