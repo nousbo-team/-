@@ -31,6 +31,7 @@
         </form>
         {% endif %}
         {% if user.is_superuser %}
+        <a href="{% url 'catalog:import_master' %}" style="font-size:11.5px;">품목 마스터 일괄 등록</a>
         <a href="{% url 'workflow:reset_test_data' %}" style="font-size:11.5px;">테스트 데이터 초기화</a>
         {% endif %}
         <form class="inline" method="post" action="{% url 'accounts:logout' %}">

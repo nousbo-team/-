@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}품목 마스터 일괄 등록 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_catalog %}active{% endblock %}
+{% block wrap_class %} narrow{% endblock %}
+{% block content %}
+<div class="eyebrow">관리자 전용</div>
+<h1>품목 마스터 일괄 등록</h1>
+<p class="subtitle">품목코드·품목명 두 열로 된 엑셀을 업로드하면, 선택한 유형·제품군으로 품목을 일괄 등록합니다. 이미 있는 품목코드는 품목명·유형·제품군이 최신 값으로 갱신됩니다.</p>
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field">
+      <label>엑셀 파일</label>
+      {{ form.file }}
+      <div class="hint">첫 번째 열=품목코드, 두 번째 열=품목명 (맨 위 행은 헤더로 보고 건너뜁니다). 파일 하나에 담긴 모든 행에 아래에서 고른 유형·제품군이 똑같이 적용됩니다 — 서로 다른 유형이 섞여 있다면 나눠서 업로드하세요.</div>
+    </div>
+    <div class="field">
+      <label>유형</label>
+      {{ form.category }}
+    </div>
+    <div class="field">
+      <label>제품군</label>
+      {{ form.product_line }}
+    </div>
+    <button class="btn btn-primary" type="submit">일괄 등록</button>
+  </form>
+</div>
+{% endblock %}
