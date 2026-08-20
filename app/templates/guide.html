@@ -301,7 +301,7 @@
               <td><span class="role-tag designer">디자인 수정</span></td>
               <td>최효진 차장</td>
               <td>디자인팀</td>
-              <td>지적된 사항에 따라 파일 수정 후 재업로드</td>
+              <td>요청한 사항에 따라 파일 수정 후 재업로드</td>
             </tr>
             <tr>
               <td><span class="role-tag approver">최종 검수</span></td>
@@ -408,10 +408,13 @@
           <h3>로그인 후 대시보드 확인</h3>
           <p>로그인하면 바로 대시보드가 뜨고, 내가 등록한 모든 요청이 <strong>요청번호·품목·사유·상태·등록일</strong> 순서로 표에 나열됩니다.</p>
           <div class="note">상태 배지 읽는 법 — <span class="pill pill-review1">1차검토중</span> 검토 대기 · <span class="pill pill-design">디자인수정중</span> 수정 진행 중 · <span class="pill pill-warn">최종검수중</span> 연구소 검수 대기 · <span class="pill pill-final">완료</span> 전달까지 끝남 · <span class="pill pill-done">취소됨</span> 중단된 건</div>
+          <div class="note">상태 옆 <strong>"진행 흐름"</strong> 열에 1차검토 → 최종검수 → 전달대기 → 완료 점이 표시되어, 배지 문구를 안 읽어도 지금 어느 단계인지 한눈에 보입니다.</div>
         </li>
         <li>
           <h3>새 재발주 요청 등록</h3>
-          <p>대시보드 상단의 <strong>"+ 재발주 요청 등록"</strong> 버튼을 누르고, 품목(품목코드-품목명)과 사유(재고 소진(임박) / 표시사항 등 수정 필요)를 선택한 뒤 등록합니다.</p>
+          <p>대시보드 상단의 <strong>"+ 재발주 요청 등록"</strong> 버튼을 누르고, 품목(품목코드-품목명)과 재발주 요청 사유(재고 소진(임박) / 표시사항 등 수정 필요)를 선택한 뒤 등록합니다.</p>
+          <div class="note">품목이 많아 목록이 길면, 선택창 위 <strong>검색창에 품목명이나 품목코드 일부를 입력</strong>해 목록을 좁힐 수 있습니다.</div>
+          <div class="note">사유 선택 아래 <strong>"요청사항"</strong> 칸에 구체적인 내용(예: 어떤 표시사항을 어떻게 고쳐야 하는지)을 간단히 적어두면, 상세 페이지와 이력에 함께 남아 담당자들이 참고할 수 있습니다(선택 입력).</div>
           <div class="note">같은 품목에 이미 진행 중인 건이 있으면 새로 만들어지지 않고 <b>기존 건으로 자동 이동</b>합니다 — 중복 등록을 막기 위한 장치이니 당황하지 않아도 됩니다.</div>
         </li>
         <li>
@@ -470,6 +473,7 @@
         <li>
           <h3>일괄 업로드 · 일괄 다운로드</h3>
           <p>상단 <strong>"일괄 업로드/다운로드"</strong> 메뉴에서, 기존에 보유 중인 포장지 파일들을 한 번에 이관하거나(품목코드 매핑용 엑셀 동반 가능), 여러 품목의 최종 승인본을 zip 하나로 묶어 이력 목록(manifest.csv)과 함께 다운로드할 수 있습니다.</p>
+          <div class="note">매핑표를 처음 만든다면 <strong>"빈 매핑표 양식 다운로드"</strong>로 열을 그대로 맞춘 엑셀을 받아서 채우면 됩니다.</div>
         </li>
       </ol>
     </section>
@@ -547,6 +551,10 @@
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">반려·취소 사유는 왜 꼭 적어야 하나요</h3>
           <p style="color:var(--ink-soft);font-size:14px;margin:0;">사유를 적지 않으면 시스템이 제출 자체를 막습니다. 되돌리는 이유가 이력에 남아야 나중에 같은 건을 다시 볼 담당자가 맥락을 알 수 있기 때문입니다.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-family:var(--font-body);font-size:15px;">대시보드의 "진행 흐름"은 뭔가요</h3>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">모든 역할의 대시보드 목록에 요청번호별로 1차검토 → 최종검수 → 전달대기 → 완료 점이 표시됩니다. 지나온 단계는 채워진 초록 점, 지금 단계는 테두리로 강조, 아직 안 온 단계는 흐리게 보입니다. 디자인수정중인 건은 1차검토 점 아래 "↳ 디자인수정중"으로, 취소된 건은 전체가 회색으로 표시됩니다 — 상태 배지를 읽지 않아도 진행 상황을 한눈에 볼 수 있습니다.</p>
         </div>
       </div>
 
