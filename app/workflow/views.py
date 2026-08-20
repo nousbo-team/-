@@ -37,6 +37,23 @@ def reset_test_data(request):
 
 
 @login_required
+def seed_demo(request):
+    """데모 계정(haon 등) 5명 + 관리자 + 샘플 품목 3건을 (없으면) 다시 만든다.
+    예전엔 배포 빌드마다 자동 실행됐지만, 실제 운영 데이터가 쌓인 뒤로는 배포할
+    때마다 데모 품목이 되살아나고 계정 비밀번호가 재설정되는 부작용이 있어 빌드에서
+    뺐다 — 필요할 때만 관리자가 여기서 수동으로 실행한다."""
+    if not request.user.is_superuser:
+        raise PermissionDenied('관리자 계정만 사용할 수 있습니다.')
+    if request.method == 'POST':
+        call_command('seed_demo_data')
+        messages.success(
+            request,
+            '데모 계정(haon, isis9, shindeok_kim, guychj, hjcho, nousbo)과 샘플 품목 3건을 확인·생성했습니다. 기존 데이터는 지우지 않습니다.')
+        return redirect('workflow:dashboard')
+    return render(request, 'workflow/seed_confirm.html')
+
+
+@login_required
 def dashboard(request):
     profile = get_profile(request.user)
     if not profile:

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}데모 데이터 시드 실행 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block wrap_class %} narrow{% endblock %}
+{% block content %}
+<div class="eyebrow">관리자 전용</div>
+<h1>데모 데이터 시드 실행</h1>
+
+<div class="card">
+  <p style="margin-top:0;">아래를 (없으면) 새로 만듭니다 — <strong>이미 있는 데이터는 지우지 않습니다.</strong></p>
+  <ul style="margin:0 0 16px;padding-left:20px;color:var(--ink-soft);font-size:13.5px;line-height:1.8;">
+    <li>데모 계정 6개 (haon, isis9, shindeok_kim, guychj, hjcho, nousbo) — 이미 있으면 비밀번호를 <code>1234</code>로 재설정</li>
+    <li>샘플 품목 3건 (없을 때만 생성)</li>
+  </ul>
+  <p style="color:var(--ink-soft);font-size:13.5px;">배포할 때 자동으로 실행되던 것을 이 화면으로 옮겼습니다 — 필요할 때만 수동으로 실행하세요.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-primary" type="submit">지금 실행하기</button>
+    <a class="btn btn-ghost" href="{% url 'workflow:dashboard' %}">취소하고 대시보드로</a>
+  </form>
+</div>
+{% endblock %}

@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('guide/', views.guide, name='guide'),
     path('admin-tools/reset-test-data/', views.reset_test_data, name='reset_test_data'),
+    path('admin-tools/seed-demo/', views.seed_demo, name='seed_demo'),
     path('requests/new/', views.new_request, name='new_request'),
     path('requests/<int:pk>/', views.request_detail, name='request_detail'),
     path('notifications/', views.notifications, name='notifications'),
