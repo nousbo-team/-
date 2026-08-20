@@ -2,6 +2,7 @@ import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -56,7 +57,8 @@ def import_master_list(request):
             category = form.cleaned_data['category']
             product_line = form.cleaned_data['product_line']
 
-            created = updated = skipped = 0
+            entries = {}  # code -> name, 뒤에 나온 행이 이기도록(중복 코드 대비) dict 사용
+            skipped = 0
             for row in rows[1:]:  # 첫 행은 헤더로 간주하고 건너뜀
                 if not row or len(row) < 2:
                     skipped += 1
@@ -66,15 +68,30 @@ def import_master_list(request):
                 if not code or not name:
                     skipped += 1
                     continue
-                _, was_created = Product.objects.update_or_create(
-                    code=code,
-                    defaults={'name': name, 'category': category, 'product_line': product_line},
-                )
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
+                entries[code] = name
 
+            # 행마다 개별 쿼리를 날리면(update_or_create) 원격 DB 왕복 지연이 누적돼
+            # 수백 건 규모에서 gunicorn 워커 타임아웃(502)으로 이어진다 — 기존 품목
+            # 조회 1번 + bulk_create/bulk_update 각 1번, 총 몇 번의 쿼리로 처리한다.
+            existing = {p.code: p for p in Product.objects.filter(code__in=entries.keys())}
+            to_create, to_update = [], []
+            for code, name in entries.items():
+                if code in existing:
+                    p = existing[code]
+                    p.name = name
+                    p.category = category
+                    p.product_line = product_line
+                    to_update.append(p)
+                else:
+                    to_create.append(Product(code=code, name=name, category=category, product_line=product_line))
+
+            with transaction.atomic():
+                if to_create:
+                    Product.objects.bulk_create(to_create, batch_size=200)
+                if to_update:
+                    Product.objects.bulk_update(to_update, ['name', 'category', 'product_line'], batch_size=200)
+
+            created, updated = len(to_create), len(to_update)
             summary = f'품목 마스터 등록 완료 — 신규 {created}건, 갱신 {updated}건'
             if skipped:
                 summary += f', 건너뜀 {skipped}건(품목코드·품목명 누락)'
