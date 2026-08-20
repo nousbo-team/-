@@ -13,7 +13,9 @@
     <div class="field">
       <label>엑셀 매핑표 (선택, 품목코드 기준 upsert)</label>
       <input type="file" name="mapping_file" accept=".xlsx">
-      <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 매핑표가 없으면 파일명으로 기존 품목명을 자동 매칭합니다(신규 품목 생성 불가).</div>
+      <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 매핑표가 없으면 파일명으로 기존 품목명을 자동 매칭합니다(신규 품목 생성 불가).
+        <a href="{% url 'workflow:bulk_mapping_template' %}">빈 매핑표 양식 다운로드</a>
+      </div>
     </div>
     <div class="field">
       <label>업로드할 파일들 (AI + JPG 쌍, 예: 품목명_v2.ai / 품목명_v2.jpg)</label>

@@ -22,6 +22,36 @@ def bulk_home(request):
     return render(request, 'workflow/bulk.html', {'products': products})
 
 
+@login_required
+def bulk_mapping_template(request):
+    """일괄 업로드용 빈 엑셀 매핑표 양식을 다운로드한다(_read_mapping이 읽는 형식과 동일)."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = '매핑표'
+
+    header = ['파일명', '품목코드', '품목명', '승인일', '승인자', '비고']
+    ws.append(header)
+    for cell in ws[1]:
+        cell.font = openpyxl.styles.Font(bold=True)
+
+    ws.append(['예시_그린비료_v1.ai', 'FERT-PP-1001', '그린비료 20kg PP포대', '2026-01-15', '조현종', '예시 행입니다 — 지우고 실제 데이터를 입력하세요'])
+    for cell in ws[2]:
+        cell.font = openpyxl.styles.Font(italic=True, color='888888')
+
+    widths = [26, 14, 26, 12, 10, 34]
+    for i, width in enumerate(widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="mapping_template.xlsx"'
+    return response
+
+
 def _read_mapping(mapping_file):
     """엑셀 매핑표(파일명/품목코드/품목명/승인일/승인자/비고) → {파일명(확장자 제외): row dict}"""
     mapping = {}
