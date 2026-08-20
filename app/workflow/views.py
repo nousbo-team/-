@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.core.management import call_command
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -15,6 +17,23 @@ from .models import ReorderRequest
 def guide(request):
     """역할별 사용 매뉴얼 — 로그인 없이 누구나 볼 수 있는 공개 안내 페이지."""
     return render(request, 'guide.html')
+
+
+@login_required
+def reset_test_data(request):
+    """테스트로 쌓인 재발주 건·이력·알림·품목·파일을 지우고 데모 데이터를 다시 채운다.
+    Render 무료 플랜은 Shell이 없어 관리자(nousbo)가 브라우저에서 직접 실행할 수 있도록
+    만든 화면 — reset_data 관리 명령을 그대로 호출한다. 계정(User/UserProfile)은 건드리지
+    않는다."""
+    if not request.user.is_superuser:
+        raise PermissionDenied('관리자 계정만 사용할 수 있습니다.')
+    if request.method == 'POST':
+        call_command('reset_data')
+        messages.success(
+            request,
+            '테스트 데이터(재발주 건·이력·알림·품목·파일)를 초기화하고 데모 데이터를 다시 채웠습니다. 계정 정보는 그대로입니다.')
+        return redirect('workflow:dashboard')
+    return render(request, 'workflow/reset_confirm.html')
 
 
 @login_required

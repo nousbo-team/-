@@ -30,6 +30,9 @@
           </button>
         </form>
         {% endif %}
+        {% if user.is_superuser %}
+        <a href="{% url 'workflow:reset_test_data' %}" style="font-size:11.5px;">테스트 데이터 초기화</a>
+        {% endif %}
         <form class="inline" method="post" action="{% url 'accounts:logout' %}">
           {% csrf_token %}
           <button class="btn btn-ghost" type="submit" style="padding:0;font-size:inherit;color:var(--accent-ink);text-decoration:underline;">로그아웃</button>
