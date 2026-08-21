@@ -13,7 +13,10 @@
   {% if user.is_authenticated %}
   <div class="topbar">
     <a class="brand" href="{% url 'workflow:dashboard' %}">누보 포장지 발주관리 시스템</a>
-    <nav>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="site-nav">
       <a href="{% url 'workflow:dashboard' %}" class="{% block nav_dashboard %}{% endblock %}">대시보드</a>
       <a href="{% url 'catalog:product_list' %}" class="{% block nav_catalog %}{% endblock %}">품목·파일</a>
       <a href="{% url 'workflow:bulk' %}" class="{% block nav_bulk %}{% endblock %}">일괄 업로드/다운로드</a>
@@ -57,6 +60,27 @@
     {% endif %}
     {% block content %}{% endblock %}
   </div>
+
+  {% if user.is_authenticated %}
+  <script>
+  (function () {
+    var topbar = document.querySelector('.topbar');
+    var toggle = document.getElementById('nav-toggle');
+    if (!topbar || !toggle) return;
+    toggle.addEventListener('click', function () {
+      var open = topbar.classList.toggle('nav-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    // 메뉴를 연 상태에서 화면 폭을 넓혀 데스크톱 레이아웃으로 바뀌면 열림 상태를 정리.
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 860 && topbar.classList.contains('nav-open')) {
+        topbar.classList.remove('nav-open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  })();
+  </script>
+  {% endif %}
 
   {% if vapid_public_key %}
   <script>
