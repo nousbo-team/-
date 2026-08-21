@@ -167,7 +167,8 @@ def review_decision(req, actor, decision, note='', use_exception=False):
                 req.save(update_fields=['status', 'used_exception', 'updated_at'])
                 _log(req, actor, RequestEvent.Action.EXCEPTION_SKIP,
                      note='최근 3개월 이내 승인 이력이 있어 최종검수를 생략하고 완료 처리')
-                _notify(req, [req.requester], f'"{req.product.name}" 재발주 건이 완료되었습니다(최종검수 생략).')
+                _notify(req, [req.requester], f'"{req.product.name}" 재발주 건이 완료되었습니다(최종검수 생략).',
+                        kakao=True)
             else:
                 req.status = ReorderRequest.Status.FINAL_REVIEW
                 req.save(update_fields=['status', 'updated_at'])
@@ -196,7 +197,7 @@ def design_upload(req, actor, ai_file, jpg_file, note=''):
         req.status = ReorderRequest.Status.REVIEW1
         req.save(update_fields=['current_file', 'status', 'updated_at'])
         _log(req, actor, RequestEvent.Action.DESIGN_UPLOADED, note=f'v{new_file.version} 업로드: {note}')
-        _notify(req, effective_reviewers(), f'"{req.product.name}" 수정본 재확인이 필요합니다.')
+        _notify(req, effective_reviewers(), f'"{req.product.name}" 수정본 재확인이 필요합니다.', kakao=True)
     return req
 
 
@@ -225,7 +226,7 @@ def final_decision(req, actor, decision, reason=''):
             req.save(update_fields=['status', 'updated_at'])
             _log(req, actor, RequestEvent.Action.FINAL_APPROVE, note=reason)
             _notify(req, effective_reviewers(),
-                    f'"{req.product.name}" 최종 승인되었습니다. 울산공장 전달 처리가 필요합니다.')
+                    f'"{req.product.name}" 최종 승인되었습니다. 울산공장 전달 처리가 필요합니다.', kakao=True)
         elif decision in ('REVISION', 'REJECT'):
             req.status = ReorderRequest.Status.REVIEW1
             req.save(update_fields=['status', 'updated_at'])
@@ -233,7 +234,7 @@ def final_decision(req, actor, decision, reason=''):
             _log(req, actor, action, note=reason)
             label = '반려' if decision == 'REJECT' else '수정 필요(경미)'
             _notify(req, effective_reviewers(),
-                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}', kakao=(decision == 'REJECT'))
+                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}', kakao=True)
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
     return req
@@ -305,5 +306,6 @@ def handoff(req, actor):
         req.status = ReorderRequest.Status.COMPLETED
         req.save(update_fields=['status', 'updated_at'])
         _log(req, actor, RequestEvent.Action.HANDOFF, note='최종파일 관리 및 울산공장 전달')
-        _notify(req, [req.requester], f'"{req.product.name}" 최종파일이 전달되었습니다. 요청이 완료되었습니다.')
+        _notify(req, [req.requester], f'"{req.product.name}" 최종파일이 전달되었습니다. 요청이 완료되었습니다.',
+                kakao=True)
     return req
