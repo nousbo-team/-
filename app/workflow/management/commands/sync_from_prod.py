@@ -20,7 +20,7 @@ MODELS_CHILD_TO_PARENT = [Notification, RequestEvent, ReorderRequest, PackagingF
 class Command(BaseCommand):
     help = (
         '운영 서버(Supabase) DB를 읽어와 로컬 개발 DB(SQLite)를 운영과 동일한 상태로 맞춘다. '
-        '로컬 데이터는 전부 지워지고 운영 데이터로 교체된다 — 운영 DB는 읽기만 하며 절대 쓰지 않는다. '
+        '로컬 데이터는 전부 지워지고 운영 데이터로 교체된다 - 운영 DB는 읽기만 하며 절대 쓰지 않는다. '
         '.env에 PROD_DATABASE_URL이 필요하고, 실제 AI/JPG 파일까지 받으려면 PROD_AWS_* 값도 필요하다.'
     )
 
@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if 'prod' not in connections.databases:
             raise CommandError(
-                '.env에 PROD_DATABASE_URL이 없습니다. Render 대시보드 → nousbo-packaging → '
+                '.env에 PROD_DATABASE_URL이 없습니다. Render 대시보드 -> nousbo-packaging -> '
                 'Environment 탭에서 DATABASE_URL 값을 복사해 app/.env에\n'
                 '  PROD_DATABASE_URL=그 값\n'
                 '으로 추가한 뒤 다시 실행하세요.')
@@ -56,7 +56,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'DB 동기화 완료: 총 {total}건.'))
 
         if options['no_files']:
-            self.stdout.write('--no-files 옵션 — 실제 파일은 받지 않았습니다.')
+            self.stdout.write('--no-files 옵션 - 실제 파일은 받지 않았습니다.')
             return
         self._sync_files()
 
@@ -79,7 +79,7 @@ class Command(BaseCommand):
             endpoint_url=os.environ.get('PROD_AWS_S3_ENDPOINT_URL', ''),
             region_name=os.environ.get('PROD_AWS_S3_REGION_NAME', 'ap-northeast-2'),
             querystring_auth=True,
-            config=BotoConfig(signature_version='s3v4', s3={'addressing_style': 'path'}),
+            client_config=BotoConfig(signature_version='s3v4', s3={'addressing_style': 'path'}),
         )
 
         pending = []
@@ -103,4 +103,4 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f'  다운로드 실패: {name} ({e})'))
 
         self.stdout.write(self.style.SUCCESS(
-            f'파일 동기화 완료 — 새로 받음 {downloaded}건, 이미 있어 건너뜀 {skipped}건, 실패 {failed}건.'))
+            f'파일 동기화 완료 - 새로 받음 {downloaded}건, 이미 있어 건너뜀 {skipped}건, 실패 {failed}건.'))
