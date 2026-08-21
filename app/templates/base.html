@@ -97,27 +97,48 @@
       btn.hidden = false;
     }).catch(function () { /* 알림 기능은 필수 아니므로 조용히 무시 */ });
 
-    btn.addEventListener('click', function () {
+    function doUnsubscribe() {
       regPromise.then(function (reg) {
-        return reg.pushManager.getSubscription().then(function (existing) {
-          if (existing) {
-            return postJson('/push/unsubscribe/', { endpoint: existing.endpoint })
-              .then(function () { return existing.unsubscribe(); })
-              .then(function () { setLabel(false); });
-          }
-          return Notification.requestPermission().then(function (permission) {
-            if (permission !== 'granted') return;
-            return reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(btn.dataset.vapidKey),
-            }).then(function (sub) {
-              return postJson('/push/subscribe/', sub.toJSON());
-            }).then(function () { setLabel(true); });
+        return reg.pushManager.getSubscription();
+      }).then(function (existing) {
+        if (!existing) { setLabel(false); return; }
+        return postJson('/push/unsubscribe/', { endpoint: existing.endpoint })
+          .then(function () { return existing.unsubscribe(); })
+          .then(function () { setLabel(false); });
+      }).catch(function () {
+        window.alert('브라우저 알림 해제 중 문제가 발생했습니다.');
+      });
+    }
+
+    function doSubscribe() {
+      // 사파리 등 일부 모바일 브라우저는 클릭 핸들러 안에서 다른 비동기 작업 없이
+      // 바로 Notification.requestPermission()을 호출해야만 허용 팝업을 띄운다 —
+      // 그래서 이 호출을 클릭 핸들러의 첫 동작으로 둔다(구독 여부 확인 등은 그 다음에).
+      Notification.requestPermission().then(function (permission) {
+        if (permission === 'denied') {
+          window.alert('이 브라우저(또는 기기 설정)에서 알림이 차단되어 있습니다. 브라우저의 사이트 설정에서 알림을 허용으로 바꾼 뒤 다시 시도해주세요.');
+          return;
+        }
+        if (permission !== 'granted') return;  // 사용자가 팝업에서 닫기/무시한 경우
+        return regPromise.then(function (reg) {
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(btn.dataset.vapidKey),
           });
-        });
-      }).catch(function (err) {
+        }).then(function (sub) {
+          return postJson('/push/subscribe/', sub.toJSON());
+        }).then(function () { setLabel(true); });
+      }).catch(function () {
         window.alert('브라우저 알림 설정 중 문제가 발생했습니다.');
       });
+    }
+
+    btn.addEventListener('click', function () {
+      if (btn.dataset.subscribed === '1') {
+        doUnsubscribe();
+      } else {
+        doSubscribe();
+      }
     });
   })();
   </script>
