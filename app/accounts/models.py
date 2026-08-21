@@ -13,6 +13,10 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=20, choices=Role.choices)
     department = models.CharField(max_length=50, blank=True)
     title = models.CharField(max_length=50, blank=True)
+    phone_number = models.CharField(
+        max_length=20, blank=True,
+        help_text='카카오톡/문자 알림 수신용 휴대폰번호 (예: 01012345678, - 없이). 비워두면 해당 담당자는 카카오톡/문자를 받지 않음(이메일·인앱 알림은 그대로 감).',
+    )
     is_away = models.BooleanField(default=False, help_text='부재중으로 설정하면 backup_user가 동일 권한으로 처리할 수 있다')
     backup_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,

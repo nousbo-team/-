@@ -204,9 +204,17 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@nousbo.com')
 
-# 카카오톡/문자는 발신 API 계약(알림톡 등)이 아직 없어 실제 발송 대신 로그로만 남긴다
-# (PRD Open Question). 이메일은 위 EMAIL_HOST 설정 여부로 실제/모의가 자동 전환된다.
-MOCK_KAKAO_NOTIFICATIONS = True
+# 카카오톡/문자 — 솔라피(Solapi) API 키가 있으면 실제 SMS로 발송(추천, 발신번호 사전
+# 등록 필요). 카카오 알림톡은 이 시스템이 상황별로 자유 문구를 만들어 보내는 구조라
+# 이벤트마다 별도 템플릿을 등록하는 대신, 승인받은 "일반 알림 템플릿" 하나(예: 본문에
+# #{message} 변수 하나만 있는 형태)에 KAKAO_PF_ID + KAKAO_TEMPLATE_ID를 채우면 그
+# 템플릿으로 발송한다 — 어느 쪽도 없으면 SMS로, SMS 설정도 없으면 로그만 남는
+# 모의(mock) 발송으로 자동 대체된다.
+SOLAPI_API_KEY = os.environ.get('SOLAPI_API_KEY', '')
+SOLAPI_API_SECRET = os.environ.get('SOLAPI_API_SECRET', '')
+SOLAPI_SENDER_PHONE = os.environ.get('SOLAPI_SENDER_PHONE', '')  # 솔라피에 사전 등록된 발신번호
+KAKAO_PF_ID = os.environ.get('KAKAO_PF_ID', '')  # 카카오톡 채널 발신프로필 키
+KAKAO_TEMPLATE_ID = os.environ.get('KAKAO_TEMPLATE_ID', '')  # 승인된 알림톡 템플릿 코드(변수 #{message} 하나만 사용)
 
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
