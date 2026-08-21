@@ -87,6 +87,13 @@
       btn.textContent = subscribed ? '브라우저 알림 해제' : '브라우저 알림 받기';
       btn.dataset.subscribed = subscribed ? '1' : '';
     }
+    function isIosDevice() {
+      return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    }
+    function isStandaloneApp() {
+      return window.navigator.standalone === true
+        || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    }
 
     var regPromise = navigator.serviceWorker.register('/sw.js');
 
@@ -111,6 +118,13 @@
     }
 
     function doSubscribe() {
+      // 아이폰 사파리는 "홈 화면에 추가"로 설치해 실행 중일 때만 알림 권한 요청이
+      // 실제로 동작한다 — 일반 사파리 탭에서는 팝업 없이 조용히 아무 일도 안 일어나
+      // 사용자 입장에서는 "눌러도 반응 없음"으로 보인다. 미리 안내한다.
+      if (isIosDevice() && !isStandaloneApp()) {
+        window.alert('아이폰에서는 이 페이지를 "홈 화면에 추가"한 뒤, 그 홈 화면 아이콘으로 실행한 상태에서만 알림을 켤 수 있습니다.\n\nSafari 하단 공유 버튼(사각형+화살표) → "홈 화면에 추가"를 먼저 진행한 다음, 홈 화면에 생긴 아이콘으로 다시 열어서 시도해주세요.');
+        return;
+      }
       // 사파리 등 일부 모바일 브라우저는 클릭 핸들러 안에서 다른 비동기 작업 없이
       // 바로 Notification.requestPermission()을 호출해야만 허용 팝업을 띄운다 —
       // 그래서 이 호출을 클릭 핸들러의 첫 동작으로 둔다(구독 여부 확인 등은 그 다음에).
