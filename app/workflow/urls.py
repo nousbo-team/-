@@ -16,4 +16,7 @@ urlpatterns = [
     path('bulk/mapping-template/', views_bulk.bulk_mapping_template, name='bulk_mapping_template'),
     path('bulk/upload/', views_bulk.bulk_upload, name='bulk_upload'),
     path('bulk/download/', views_bulk.bulk_download, name='bulk_download'),
+    path('sw.js', views.service_worker, name='service_worker'),
+    path('push/subscribe/', views.push_subscribe, name='push_subscribe'),
+    path('push/unsubscribe/', views.push_unsubscribe, name='push_unsubscribe'),
 ]

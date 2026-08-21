@@ -9,7 +9,7 @@ from accounts.models import UserProfile
 from catalog.models import PackagingFile
 
 from .models import Notification, RequestEvent, ReorderRequest
-from .notify import send_email_mock, send_kakao_mock
+from .notify import send_email_mock, send_kakao_mock, send_web_push
 
 _NOTIFY_STATUS_LABEL = {
     'sent': '발송 성공',
@@ -93,6 +93,13 @@ def _notify(req, users, message, kakao=False):
     if email_detail:
         email_line += f' ({email_detail})'
     lines.append(email_line)
+
+    push_status, push_detail = send_web_push(users, f'{req.product.name} ({req.request_no})', message,
+                                              url=f'/requests/{req.pk}/')
+    push_line = f'· 브라우저 알림: {_NOTIFY_STATUS_LABEL[push_status]}'
+    if push_detail:
+        push_line += f' ({push_detail})'
+    lines.append(push_line)
 
     if kakao:
         kakao_status, _ = send_kakao_mock(users, message)

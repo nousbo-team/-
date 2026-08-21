@@ -30,6 +30,9 @@
           </button>
         </form>
         {% endif %}
+        {% if vapid_public_key %}
+        <button id="push-toggle" type="button" class="btn btn-ghost" style="padding:4px 8px;font-size:11.5px;" data-vapid-key="{{ vapid_public_key }}" hidden>브라우저 알림 받기</button>
+        {% endif %}
         {% if user.is_superuser %}
         <a href="{% url 'catalog:import_master' %}" style="font-size:11.5px;">품목 마스터 일괄 등록</a>
         <a href="{% url 'workflow:reset_test_data' %}" style="font-size:11.5px;">테스트 데이터 초기화</a>
@@ -54,5 +57,70 @@
     {% endif %}
     {% block content %}{% endblock %}
   </div>
+
+  {% if vapid_public_key %}
+  <script>
+  (function () {
+    var btn = document.getElementById('push-toggle');
+    if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      var rawData = window.atob(base64);
+      var outputArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+      return outputArray;
+    }
+    function getCsrfToken() {
+      var m = document.cookie.match(/csrftoken=([^;]+)/);
+      return m ? m[1] : '';
+    }
+    function postJson(url, body) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(body),
+      });
+    }
+    function setLabel(subscribed) {
+      btn.textContent = subscribed ? '브라우저 알림 해제' : '브라우저 알림 받기';
+      btn.dataset.subscribed = subscribed ? '1' : '';
+    }
+
+    var regPromise = navigator.serviceWorker.register('/sw.js');
+
+    regPromise.then(function (reg) {
+      return reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      setLabel(!!sub);
+      btn.hidden = false;
+    }).catch(function () { /* 알림 기능은 필수 아니므로 조용히 무시 */ });
+
+    btn.addEventListener('click', function () {
+      regPromise.then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (existing) {
+          if (existing) {
+            return postJson('/push/unsubscribe/', { endpoint: existing.endpoint })
+              .then(function () { return existing.unsubscribe(); })
+              .then(function () { setLabel(false); });
+          }
+          return Notification.requestPermission().then(function (permission) {
+            if (permission !== 'granted') return;
+            return reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(btn.dataset.vapidKey),
+            }).then(function (sub) {
+              return postJson('/push/subscribe/', sub.toJSON());
+            }).then(function () { setLabel(true); });
+          });
+        });
+      }).catch(function (err) {
+        window.alert('브라우저 알림 설정 중 문제가 발생했습니다.');
+      });
+    });
+  })();
+  </script>
+  {% endif %}
 </body>
 </html>

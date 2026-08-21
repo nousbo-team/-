@@ -1,22 +1,76 @@
+import json
 from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from accounts.models import UserProfile, get_profile
 
 from . import services
 from .forms import DesignUploadForm, NewRequestForm
-from .models import ReorderRequest
+from .models import PushSubscription, ReorderRequest
 
 
 def guide(request):
     """역할별 사용 매뉴얼 — 로그인 없이 누구나 볼 수 있는 공개 안내 페이지."""
     return render(request, 'guide.html')
+
+
+_SERVICE_WORKER_JS = """
+self.addEventListener('push', function (event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  var title = data.title || '누보 포장지 발주관리 시스템';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    data: { url: data.url || '/' }
+  }));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  var url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(clients.openWindow(url));
+});
+"""
+
+
+def service_worker(request):
+    """루트 경로(/sw.js)에서 서빙해야 사이트 전체를 제어 범위로 등록할 수 있다
+    (하위 경로에서 서빙하면 그 경로 밑으로만 적용됨) — 그래서 static이 아닌
+    전용 뷰로 둔다."""
+    return HttpResponse(_SERVICE_WORKER_JS, content_type='application/javascript')
+
+
+@login_required
+@require_POST
+def push_subscribe(request):
+    try:
+        data = json.loads(request.body)
+        PushSubscription.objects.update_or_create(
+            endpoint=data['endpoint'],
+            defaults={'user': request.user, 'p256dh': data['keys']['p256dh'], 'auth': data['keys']['auth']},
+        )
+    except (KeyError, ValueError, TypeError):
+        return JsonResponse({'ok': False}, status=400)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def push_unsubscribe(request):
+    try:
+        data = json.loads(request.body)
+    except ValueError:
+        data = {}
+    PushSubscription.objects.filter(endpoint=data.get('endpoint', '')).delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required

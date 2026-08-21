@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Notification, RequestEvent, ReorderRequest
+from .models import Notification, PushSubscription, RequestEvent, ReorderRequest
 
 
 class RequestEventInline(admin.TabularInline):
@@ -21,3 +21,9 @@ class ReorderRequestAdmin(admin.ModelAdmin):
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ('user', 'request', 'message', 'is_read', 'created_at')
     list_filter = ('is_read',)
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'endpoint', 'created_at')
+    search_fields = ('user__username', 'endpoint')

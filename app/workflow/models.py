@@ -141,3 +141,20 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.message
+
+
+class PushSubscription(models.Model):
+    """브라우저의 웹 푸시 구독 정보(기기·브라우저별로 하나씩) — Notification 생성 시
+    이걸 갖고 있는 사용자에게 실제 브라우저 알림을 보낸다."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '웹 푸시 구독'
+        verbose_name_plural = '웹 푸시 구독'
+
+    def __str__(self):
+        return f'{self.user} · {self.endpoint[:40]}...'

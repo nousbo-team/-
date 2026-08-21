@@ -12,12 +12,21 @@
   3) 위 설정이 전혀 없으면 콘솔/로그로만 남는 모의(mock) 발송
   4) 담당자 프로필에 휴대폰번호(phone_number)가 없으면 그 담당자는 애초에 수신 대상에서 제외
 
-두 함수 모두 (status, detail) 튜플을 반환한다. status는 'sent' | 'failed' | 'mock'
+웹 푸시(브라우저 알림):
+  1) settings.VAPID_PUBLIC_KEY/PRIVATE_KEY가 있으면, 담당자가 "브라우저 알림 받기"를
+     켜둔 기기(PushSubscription)로 실제 브라우저 알림을 보낸다. 별도 계정 가입이나
+     비용 없이 브라우저 표준 기능만으로 동작한다(FCM/APNs 등은 브라우저가 내부적으로
+     알아서 씀).
+  2) 구독이 만료/취소된 경우(404/410) 그 구독 정보를 자동으로 정리한다.
+  3) 키가 없으면 로그만 남기는 모의 발송.
+
+세 함수 모두 (status, detail) 튜플을 반환한다. status는 'sent' | 'failed' | 'mock'
 (recipients가 아예 없으면 'no_recipients') — 이력 타임라인에 채널별 성공 여부를
 표시하기 위해 services.py에서 사용한다.
 """
 import hashlib
 import hmac
+import json
 import logging
 import uuid
 from datetime import datetime, timezone as dt_timezone
@@ -136,3 +145,51 @@ def send_kakao_mock(users, message):
     for u, phone in recipients:
         logger.info('[MOCK KAKAO/SMS] to=%s(%s) message=%s', u.username, phone, message)
     return 'mock', ''
+
+
+def send_web_push(users, title, message, url='/'):
+    """PushSubscription을 등록해둔 담당자에게 브라우저 알림을 보낸다."""
+    from .models import PushSubscription
+
+    subs = list(PushSubscription.objects.filter(user__in=users).select_related('user'))
+    if not subs:
+        return 'no_recipients', ''
+
+    if not (settings.VAPID_PUBLIC_KEY and settings.VAPID_PRIVATE_KEY):
+        for s in subs:
+            logger.info('[MOCK WEBPUSH] to=%s title=%s', s.user.username, title)
+        return 'mock', ''
+
+    from pywebpush import WebPushException, webpush
+
+    payload = json.dumps({'title': title, 'body': message, 'url': url})
+    sent = failed = 0
+    for s in subs:
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': s.endpoint,
+                    'keys': {'p256dh': s.p256dh, 'auth': s.auth},
+                },
+                data=payload,
+                vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                vapid_claims={'sub': settings.VAPID_CLAIM_EMAIL},
+                timeout=10,
+            )
+            sent += 1
+        except WebPushException as e:
+            status_code = getattr(getattr(e, 'response', None), 'status_code', None)
+            if status_code in (404, 410):
+                s.delete()  # 구독이 만료/해지됨 — 다음부터 대상에서 자동 제외
+            else:
+                logger.warning('[WEBPUSH] 발송 실패: %s (%s)', s.endpoint[:60], e)
+            failed += 1
+        except Exception:
+            logger.exception('[WEBPUSH] 알 수 없는 오류: %s', s.endpoint[:60])
+            failed += 1
+
+    if sent and not failed:
+        return 'sent', f'{sent}건'
+    if sent:
+        return 'sent', f'{sent}건 성공, {failed}건 실패'
+    return 'failed', f'{failed}건 실패'

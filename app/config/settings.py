@@ -70,6 +70,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'workflow.context_processors.unread_notifications',
+                'workflow.context_processors.web_push',
             ],
         },
     },
@@ -215,6 +216,13 @@ SOLAPI_API_SECRET = os.environ.get('SOLAPI_API_SECRET', '')
 SOLAPI_SENDER_PHONE = os.environ.get('SOLAPI_SENDER_PHONE', '')  # 솔라피에 사전 등록된 발신번호
 KAKAO_PF_ID = os.environ.get('KAKAO_PF_ID', '')  # 카카오톡 채널 발신프로필 키
 KAKAO_TEMPLATE_ID = os.environ.get('KAKAO_TEMPLATE_ID', '')  # 승인된 알림톡 템플릿 코드(변수 #{message} 하나만 사용)
+
+# 웹 푸시 — 브라우저 자체 기능(FCM/APNs 등은 그 뒤에서 각 브라우저가 알아서 씀,
+# 별도 계정 가입 불필요). VAPID_PUBLIC_KEY/PRIVATE_KEY가 있으면 담당자가 "브라우저
+# 알림 받기"를 켰을 때 실제 발송된다. 없으면 그 기능 자체가 화면에 나타나지 않는다.
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:noreply@nousbo.com')
 
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
