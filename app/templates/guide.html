@@ -413,6 +413,7 @@
           <p>로그인하면 바로 대시보드가 뜨고, 내가 등록한 모든 요청이 <strong>요청번호·품목·사유·상태·등록일</strong> 순서로 표에 나열됩니다.</p>
           <div class="note">상태 배지 읽는 법 — <span class="pill pill-review1">1차검토중</span> 검토 대기 · <span class="pill pill-design">디자인수정중</span> 수정 진행 중 · <span class="pill pill-warn">최종검수중</span> 연구소 검수 대기 · <span class="pill pill-final">완료</span> 전달까지 끝남 · <span class="pill pill-done">취소됨</span> 중단된 건</div>
           <div class="note">상태 옆 <strong>"진행 흐름"</strong> 열에 1차검토 → 최종검수 → 전달대기 → 완료 점이 표시되어, 배지 문구를 안 읽어도 지금 어느 단계인지 한눈에 보입니다.</div>
+          <div class="note">대시보드에는 <strong>진행 중인 건만</strong> 표시됩니다. 완료되거나 취소된 건은 목록이 계속 길어지지 않도록 자동으로 빠지며, 상단 <strong>"완료·취소 이력"</strong> 메뉴에서 요청번호·품목명으로 검색해 언제든 다시 찾아볼 수 있습니다.</div>
         </li>
         <li>
           <h3>새 재발주 요청 등록</h3>
@@ -473,6 +474,7 @@
         <li>
           <h3>부재중 설정 (대체 담당자 라우팅)</h3>
           <p>휴가·출장 등으로 자리를 비울 때는 화면 상단의 <strong>"부재중 설정"</strong>을 눌러두세요. 켜져 있는 동안에는 김신덕 본부장 대시보드에도 동일한 대기 건이 노출되어 대신 처리할 수 있습니다. 복귀하면 같은 버튼(부재중 해제)으로 끄면 됩니다.</p>
+          <div class="note">부재중으로 설정해두면, 그 사이 등록되는 건은 대체 담당자에게도 <strong>이메일·문자·브라우저 알림이 동일하게</strong> 갑니다 — 본인 것과 별도로 확인 연락을 따로 할 필요가 없습니다.</div>
         </li>
         <li>
           <h3>일괄 업로드 · 일괄 다운로드</h3>
@@ -542,11 +544,19 @@
       <div class="grid-2">
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">알림은 어디서 확인하나요</h3>
-          <p style="color:var(--ink-soft);font-size:14px;margin:0;">내 차례가 되면 화면 상단 <strong>"알림함"</strong>에 실시간으로 표시됩니다(숫자 배지). 이메일·카카오톡/문자 알림도 함께 시도되지만, 현재는 실제 발신 계약 전이라 <strong>로그로만 기록되는 모의(mock) 발송</strong>입니다 — 그러니 업무 확인은 반드시 알림함을 기준으로 하세요.</p>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">내 차례가 되면 화면 상단 <strong>"알림함"</strong>에 실시간으로 표시됩니다(숫자 배지). 등록된 이메일과 휴대폰번호로 <strong>이메일·문자 알림도 실제로 발송</strong>되며, 부재중 대체 담당자를 포함해 모든 처리 단계(등록·수정요청·검수요청·승인·반려·취소·전달완료)에서 동일하게 나갑니다. 문자를 받으려면 관리자에게 요청해 본인 프로필에 <strong>휴대폰번호</strong>가 등록되어 있어야 합니다.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-family:var(--font-body);font-size:15px;">브라우저(휴대폰) 알림 받기</h3>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">화면 상단 사용자 이름 옆에 <strong>"브라우저 알림 받기"</strong> 버튼이 보이면 눌러서 허용해두세요. 이후 시스템을 직접 열어보지 않아도 내 차례가 될 때마다 기기 알림으로 바로 받을 수 있습니다. 아이폰(Safari)에서는 먼저 <strong>홈 화면에 추가</strong> 후 그 아이콘으로 실행해야 알림 허용 창이 뜹니다.</p>
         </div>
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">이력(타임라인)은 왜 중요한가요</h3>
           <p style="color:var(--ink-soft);font-size:14px;margin:0;">모든 건의 상세 페이지 하단에는 등록부터 지금까지의 모든 조치(등록·검토·수정·검수·반려·전달)가 <strong>누가·언제·무슨 내용으로</strong> 처리했는지 빠짐없이 시간순으로 남습니다. 진행 경위를 다시 설명할 필요 없이 이 화면 하나로 확인하면 됩니다.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-family:var(--font-body);font-size:15px;">지난 건은 어디서 찾나요</h3>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">모든 역할의 대시보드는 <strong>진행 중인 건만</strong> 보여줍니다. 완료·취소된 과거 건은 상단 <strong>"완료·취소 이력"</strong> 메뉴에서 요청번호·품목명·품목코드로 검색하고, 완료/취소 상태로도 좁혀볼 수 있습니다.</p>
         </div>
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">버튼이 안 보여요</h3>
@@ -555,6 +565,10 @@
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">반려·취소 사유는 왜 꼭 적어야 하나요</h3>
           <p style="color:var(--ink-soft);font-size:14px;margin:0;">사유를 적지 않으면 시스템이 제출 자체를 막습니다. 되돌리는 이유가 이력에 남아야 나중에 같은 건을 다시 볼 담당자가 맥락을 알 수 있기 때문입니다.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-family:var(--font-body);font-size:15px;">휴대폰에서도 그대로 쓸 수 있나요</h3>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">네, PC와 동일한 주소로 휴대폰 브라우저에서도 이용할 수 있습니다. 화면이 좁아지면 상단 메뉴가 <strong>≡ 버튼(햄버거 메뉴)</strong>으로 접히고, 대시보드·품목·파일 등 표 형태 화면은 각 행이 카드 형태로 자동 전환되어 좌우로 긴 표를 스크롤할 필요가 없습니다.</p>
         </div>
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">대시보드의 "진행 흐름"은 뭔가요</h3>
