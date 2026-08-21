@@ -43,3 +43,19 @@ services:
         sync: false
       - key: AWS_S3_REGION_NAME
         sync: false
+      - key: SOLAPI_API_KEY
+        sync: false
+      - key: SOLAPI_API_SECRET
+        sync: false
+      - key: SOLAPI_SENDER_PHONE
+        sync: false
+      - key: KAKAO_PF_ID
+        sync: false
+      - key: KAKAO_TEMPLATE_ID
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CLAIM_EMAIL
+        sync: false
