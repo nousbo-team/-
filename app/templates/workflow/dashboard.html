@@ -6,9 +6,10 @@
 <h1>대시보드</h1>
 
 {% if role == 'REQUESTER' %}
-<p class="subtitle">내가 등록한 재발주 요청 현황입니다.</p>
+<p class="subtitle">내가 등록한 재발주 요청 중 <strong>진행중인 건</strong>만 표시합니다. 완료·취소된 건은 <a href="{% url 'workflow:history' %}">이력 페이지</a>에서 검색할 수 있습니다.</p>
 <div class="actions-row" style="margin-bottom:16px;">
   <a class="btn btn-primary" href="{% url 'workflow:new_request' %}">+ 재발주 요청 등록</a>
+  <a class="btn btn-ghost" href="{% url 'workflow:history' %}">완료·취소 이력 보기</a>
 </div>
 <div class="card table-wrap">
   {% if my_requests %}
@@ -43,7 +44,7 @@
 </div>
 
 {% else %}
-<p class="subtitle">내가 처리해야 할 건 목록입니다.</p>
+<p class="subtitle">내가 처리해야 할 건 목록입니다 (진행중인 건만 표시). 완료·취소된 건은 <a href="{% url 'workflow:history' %}">이력 페이지</a>에서 검색할 수 있습니다.</p>
 <div class="card table-wrap">
   {% if empty_hint %}
   <div class="empty-state">{{ empty_hint }}</div>

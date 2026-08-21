@@ -41,6 +41,11 @@ BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 SOLAPI_SEND_ENDPOINT = 'https://api.solapi.com/messages/v4/send-many'
 
 
+class SolapiSendError(Exception):
+    """Solapi가 메시지 이력에도 남기지 않고 요청 단계에서 거부한 경우(발신번호 미등록,
+    잔액 부족, 요청 형식 오류 등) — 원인 문구를 그대로 담아 이력에 노출한다."""
+
+
 def _solapi_auth_header(api_key, api_secret):
     date = datetime.now(dt_timezone.utc).isoformat()
     salt = uuid.uuid4().hex
@@ -73,7 +78,16 @@ def _send_via_solapi(phones, message):
     resp = requests.post(
         SOLAPI_SEND_ENDPOINT, headers=headers,
         json={'messages': [_one_message(p) for p in phones]}, timeout=10)
-    resp.raise_for_status()
+    if not resp.ok:
+        # Solapi는 검증 단계에서 거부한 요청(미등록 발신번호, 잘못된 요청 등)은
+        # 메시지 이력에 아예 남기지 않는다 — 응답 본문이 유일한 단서이므로 그대로
+        # 예외 메시지에 실어 보낸다(운영 서버 Shell이 없어 로그를 못 보는 경우 대비).
+        try:
+            body = resp.json()
+            reason = body.get('errorMessage') or body.get('message') or resp.text
+        except ValueError:
+            reason = resp.text
+        raise SolapiSendError(f'{resp.status_code} {reason}'[:300])
     return '알림톡' if use_kakao else 'SMS'
 
 
@@ -138,9 +152,12 @@ def send_kakao_mock(users, message):
             channel = _send_via_solapi(phones, message)
             logger.info('[KAKAO/SMS:SOLAPI:%s] to=%s', channel, phones)
             return 'sent', channel
-        except Exception:
-            logger.exception('[KAKAO/SMS:SOLAPI] 발송 실패 - 로그로만 남김. to=%s', phones)
-            return 'failed', 'Solapi'
+        except SolapiSendError as e:
+            logger.exception('[KAKAO/SMS:SOLAPI] 발송 실패. to=%s', phones)
+            return 'failed', str(e)
+        except Exception as e:
+            logger.exception('[KAKAO/SMS:SOLAPI] 발송 실패. to=%s', phones)
+            return 'failed', f'{type(e).__name__}: {e}'[:300]
 
     for u, phone in recipients:
         logger.info('[MOCK KAKAO/SMS] to=%s(%s) message=%s', u.username, phone, message)

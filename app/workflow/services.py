@@ -102,8 +102,13 @@ def _notify(req, users, message, kakao=False):
     lines.append(push_line)
 
     if kakao:
-        kakao_status, _ = send_kakao_mock(users, message)
-        lines.append(f'· 카카오톡/문자: {_NOTIFY_STATUS_LABEL[kakao_status]}')
+        kakao_status, kakao_detail = send_kakao_mock(users, message)
+        kakao_line = f'· 카카오톡/문자: {_NOTIFY_STATUS_LABEL[kakao_status]}'
+        if kakao_status == 'failed' and kakao_detail:
+            kakao_line += f' — {kakao_detail}'
+        elif kakao_detail and kakao_status != 'failed':
+            kakao_line += f' ({kakao_detail})'
+        lines.append(kakao_line)
 
     RequestEvent.objects.create(
         request=req, actor=None, action=RequestEvent.Action.NOTIFY,

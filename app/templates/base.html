@@ -27,6 +27,7 @@
     </button>
     <nav id="site-nav">
       <a href="{% url 'workflow:dashboard' %}" class="{% block nav_dashboard %}{% endblock %}">대시보드</a>
+      <a href="{% url 'workflow:history' %}" class="{% block nav_history %}{% endblock %}">완료·취소 이력</a>
       <a href="{% url 'catalog:product_list' %}" class="{% block nav_catalog %}{% endblock %}">품목·파일</a>
       <a href="{% url 'workflow:bulk' %}" class="{% block nav_bulk %}{% endblock %}">일괄 업로드/다운로드</a>
       <a href="{% url 'workflow:notifications' %}" class="{% block nav_notify %}{% endblock %}">

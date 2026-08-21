@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}완료·취소 이력 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_history %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">{{ request.user.profile.get_role_display }}</div>
+<h1>완료·취소 이력</h1>
+<p class="subtitle">완료되었거나 취소된 재발주 건을 요청번호·품목명·품목코드로 검색할 수 있습니다.</p>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" class="field-row" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+    <div class="field" style="flex:1 1 240px;margin:0;">
+      <label>검색어</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="요청번호, 품목명, 품목코드">
+    </div>
+    <div class="field" style="flex:0 0 160px;margin:0;">
+      <label>상태</label>
+      <select name="status">
+        <option value="">전체</option>
+        <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>완료</option>
+        <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>취소</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">검색</button>
+    {% if q or status_filter %}<a class="btn btn-ghost" href="{% url 'workflow:history' %}">초기화</a>{% endif %}
+  </form>
+</div>
+
+<div class="card table-wrap">
+  {% if page_obj.object_list %}
+  <table>
+    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>요청자</th><th>등록일</th><th>완료/취소일</th></tr></thead>
+    <tbody>
+      {% for r in page_obj %}
+      <tr>
+        <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td data-label="품목">{{ r.product.name }}</td>
+        <td data-label="사유">{{ r.get_reason_display }}</td>
+        <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        <td data-label="등록일">{{ r.created_at|date:'Y-m-d H:i' }}</td>
+        <td data-label="완료/취소일">{{ r.updated_at|date:'Y-m-d H:i' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination" style="display:flex;gap:8px;justify-content:center;padding:14px 0 4px;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-ghost" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.previous_page_number }}">이전</a>
+    {% endif %}
+    <span style="align-self:center;font-size:13px;color:var(--ink-soft);">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 페이지 (총 {{ page_obj.paginator.count }}건)</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-ghost" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.next_page_number }}">다음</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="empty-state">
+    {% if q or status_filter %}검색 조건에 맞는 이력이 없습니다.{% else %}완료·취소된 건이 아직 없습니다.{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

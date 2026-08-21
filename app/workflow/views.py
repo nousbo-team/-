@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
+from django.db import models
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -120,7 +121,9 @@ def dashboard(request):
     empty_hint = None
 
     if role == UserProfile.Role.REQUESTER:
-        my_requests = ReorderRequest.objects.filter(requester=request.user).select_related('product')
+        my_requests = ReorderRequest.objects.filter(
+            requester=request.user
+        ).exclude(status__in=ReorderRequest.TERMINAL_STATUSES).select_related('product')
     elif role == UserProfile.Role.REVIEWER:
         if request.user in services.effective_reviewers():
             pending = ReorderRequest.objects.filter(
@@ -140,6 +143,45 @@ def dashboard(request):
         'pending': pending,
         'empty_hint': empty_hint,
         'stale_cutoff': timezone.now() - timedelta(days=3),
+    })
+
+
+@login_required
+def history(request):
+    """완료/취소된 재발주 건 이력 — 요청번호·품목명 키워드 검색 + 상태 필터 + 페이지네이션.
+    대시보드가 진행중인 건만 보여주도록 분리되면서, 지난 이력을 따로 찾아볼 수 있게 만든 화면.
+    요청자는 본인이 등록한 건만, 그 외 역할(리뷰어/디자인/연구소)은 회사 전체 이력을 본다."""
+    from django.core.paginator import Paginator
+
+    profile = get_profile(request.user)
+    if not profile:
+        return render(request, 'workflow/no_profile.html')
+
+    Status = ReorderRequest.Status
+    qs = ReorderRequest.objects.filter(
+        status__in=ReorderRequest.TERMINAL_STATUSES
+    ).select_related('product', 'requester')
+    if profile.role == UserProfile.Role.REQUESTER:
+        qs = qs.filter(requester=request.user)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(request_no__icontains=q) | models.Q(product__name__icontains=q)
+            | models.Q(product__code__icontains=q)
+        )
+    status_filter = request.GET.get('status', '')
+    if status_filter in (Status.COMPLETED, Status.CANCELLED):
+        qs = qs.filter(status=status_filter)
+
+    qs = qs.order_by('-updated_at')
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'workflow/history.html', {
+        'page_obj': page_obj,
+        'q': q,
+        'status_filter': status_filter,
     })
 
 

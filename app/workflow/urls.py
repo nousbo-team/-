@@ -6,6 +6,7 @@ app_name = 'workflow'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('history/', views.history, name='history'),
     path('guide/', views.guide, name='guide'),
     path('admin-tools/reset-test-data/', views.reset_test_data, name='reset_test_data'),
     path('admin-tools/seed-demo/', views.seed_demo, name='seed_demo'),
