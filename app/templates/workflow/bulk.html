@@ -35,11 +35,11 @@
         <tbody>
           {% for p in products %}
           <tr>
-            <td><input type="checkbox" name="products" value="{{ p.pk }}"></td>
-            <td style="font-family:monospace;font-size:12.5px;">{{ p.code }}</td>
-            <td>{{ p.name }}</td>
-            <td>{{ p.get_category_display }}</td>
-            <td>
+            <td data-label="선택"><input type="checkbox" name="products" value="{{ p.pk }}"></td>
+            <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ p.code }}</td>
+            <td data-label="품목명">{{ p.name }}</td>
+            <td data-label="유형">{{ p.get_category_display }}</td>
+            <td data-label="최종 승인본">
               {% with f=p.current_final_file %}
               {% if f %}<span class="pill pill-final">v{{ f.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}
               {% endwith %}

@@ -20,19 +20,19 @@
     <tbody>
       {% for row in rows %}
       <tr>
-        <td style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
-        <td><a href="{% url 'catalog:product_detail' row.product.pk %}">{{ row.product.name }}</a></td>
-        <td>{{ row.product.get_category_display }}</td>
-        <td>{{ row.product.get_product_line_display }}</td>
-        <td>
+        <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
+        <td data-label="품목명"><a href="{% url 'catalog:product_detail' row.product.pk %}">{{ row.product.name }}</a></td>
+        <td data-label="유형">{{ row.product.get_category_display }}</td>
+        <td data-label="제품군">{{ row.product.get_product_line_display }}</td>
+        <td data-label="최종 승인본">
           {% if row.final_file %}
           <span class="pill pill-final">v{{ row.final_file.version }} 승인본</span>
           {% else %}
           <span class="pill pill-submitted">승인본 없음</span>
           {% endif %}
         </td>
-        <td>{{ row.version_count }}</td>
-        <td>
+        <td data-label="버전 수">{{ row.version_count }}</td>
+        <td data-label="진행중 요청">
           {% if row.open_request %}
           <a href="{% url 'workflow:request_detail' row.open_request.pk %}" class="pill pill-review1">{{ row.open_request.request_no }}</a>
           {% else %}

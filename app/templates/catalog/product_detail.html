@@ -20,19 +20,19 @@
     <tbody>
       {% for f in files %}
       <tr>
-        <td>v{{ f.version }}</td>
-        <td>
+        <td data-label="버전">v{{ f.version }}</td>
+        <td data-label="상태">
           {% if f.status == 'FINAL_APPROVED' %}<span class="pill pill-final">최종 승인본</span>
           {% elif f.status == 'SUPERSEDED' %}<span class="pill pill-submitted">이전 버전</span>
           {% else %}<span class="pill pill-review1">작업중</span>{% endif %}
         </td>
-        <td>{{ f.uploaded_by.get_full_name|default:f.uploaded_by.username }}<br><span style="color:var(--ink-soft);font-size:11.5px;">{{ f.uploaded_at|date:'Y-m-d H:i' }}</span></td>
-        <td>
+        <td data-label="업로드">{{ f.uploaded_by.get_full_name|default:f.uploaded_by.username }}<br><span style="color:var(--ink-soft);font-size:11.5px;">{{ f.uploaded_at|date:'Y-m-d H:i' }}</span></td>
+        <td data-label="승인">
           {% if f.approved_by %}
           {{ f.approved_by.get_full_name|default:f.approved_by.username }}<br><span style="color:var(--ink-soft);font-size:11.5px;">{{ f.approved_at|date:'Y-m-d H:i' }}</span>
           {% else %}—{% endif %}
         </td>
-        <td>
+        <td data-label="파일">
           {% if f.status == 'FINAL_APPROVED' %}
           <a class="btn" href="{{ f.ai_file.url }}" download>AI</a>
           <a class="btn" href="{{ f.jpg_file.url }}" download>JPG</a>
@@ -42,7 +42,7 @@
           <div class="hint" style="color:var(--danger);margin-top:4px;">⚠ 승인본이 아닙니다 — 인쇄용으로 사용하지 마세요</div>
           {% endif %}
         </td>
-        <td style="font-size:12.5px;color:var(--ink-soft);">{{ f.note|default:'—' }}</td>
+        <td data-label="비고" style="font-size:12.5px;color:var(--ink-soft);">{{ f.note|default:'—' }}</td>
       </tr>
       {% endfor %}
     </tbody>

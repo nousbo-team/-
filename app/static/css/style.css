@@ -87,8 +87,19 @@ a { color: var(--accent-ink); }
     flex-direction: column; align-items: stretch; gap: 8px;
     width: 100%; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line);
   }
-  .topbar .user-chip form.inline { display: block; }
-  .topbar .user-chip .btn { width: 100%; justify-content: center; }
+  .topbar .user-chip form.inline { display: block; width: 100%; }
+  /* 부재중 설정/알림 받기/관리자 링크/로그아웃 등 — 원래 각자 다른 inline 스타일
+     (padding, font-size)을 데스크톱 한 줄 배치용으로 갖고 있어 그대로 두면 모바일
+     메뉴에서 버튼 높이가 제각각이 된다. 여기서 전부 같은 높이·정렬로 강제 통일한다. */
+  .topbar .user-chip .btn,
+  .topbar .user-chip > a {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; box-sizing: border-box; min-height: 40px;
+    padding: 9px 12px !important; font-size: 13.5px !important;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper-raised); color: var(--ink);
+    text-decoration: none; font-weight: 600;
+  }
 }
 
 .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
@@ -118,6 +129,34 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lin
 thead th { color: var(--ink-soft); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .02em; }
 tbody tr:hover { background: var(--accent-soft); }
 .table-wrap { overflow-x: auto; }
+
+/* 좁은 화면에서는 가로 스크롤 대신 행 하나하나를 카드로 쌓는다 — 각 셀의
+   data-label 속성을 항목명으로 앞에 붙여서 표시(각 템플릿에서 <td data-label="...">
+   로 지정). */
+@media (max-width: 700px) {
+  .table-wrap table, .table-wrap thead, .table-wrap tbody,
+  .table-wrap th, .table-wrap td, .table-wrap tr { display: block; }
+  .table-wrap thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; /* 스크린리더용으로만 남기고 시각적으로 숨김 */
+  }
+  .table-wrap tbody tr {
+    margin-bottom: 12px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--paper-raised);
+  }
+  .table-wrap tbody tr:last-child { margin-bottom: 0; }
+  .table-wrap td {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+    padding: 6px 0; border-bottom: 1px dashed var(--line); text-align: right;
+  }
+  .table-wrap td:last-child { border-bottom: none; }
+  .table-wrap td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex-shrink: 0; text-align: left;
+    font-size: 11.5px; font-weight: 700; color: var(--ink-soft);
+  }
+  .table-wrap td[data-label=""] { justify-content: flex-end; }
+}
 
 .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .pill-submitted { background: var(--kraft-soft); color: var(--kraft); }
