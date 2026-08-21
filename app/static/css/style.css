@@ -41,7 +41,8 @@ a { color: var(--accent-ink); }
   justify-content: space-between;
   height: 56px;
 }
-.topbar .brand { font-weight: 700; color: var(--accent-ink); text-decoration: none; font-size: 16px; }
+.topbar .brand { font-weight: 700; color: var(--accent-ink); text-decoration: none; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.topbar .brand img { display: block; flex-shrink: 0; }
 .topbar nav { display: flex; align-items: center; gap: 16px; font-size: 13.5px; }
 .topbar nav a { text-decoration: none; color: var(--ink-soft); }
 .topbar nav a.active { color: var(--accent-ink); font-weight: 700; }

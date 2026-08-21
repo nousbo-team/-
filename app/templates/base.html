@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}누보 포장지 발주관리 시스템{% endblock %}</title>
+  <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/icon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/icon-16.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <meta name="theme-color" content="#3d5c4a">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
@@ -12,7 +18,10 @@
 <body>
   {% if user.is_authenticated %}
   <div class="topbar">
-    <a class="brand" href="{% url 'workflow:dashboard' %}">누보 포장지 발주관리 시스템</a>
+    <a class="brand" href="{% url 'workflow:dashboard' %}">
+      <img src="{% static 'img/icon-48.png' %}" alt="" width="22" height="22">
+      누보 포장지 발주관리 시스템
+    </a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">
       <span></span><span></span><span></span>
     </button>
