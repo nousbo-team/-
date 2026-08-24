@@ -1,7 +1,17 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 
 from catalog.models import PackagingFile, Product
+
+
+def request_attachment_upload_to(instance, filename):
+    # catalog.models.packaging_upload_to와 같은 이유 — 원본 파일명(한글 등)을 그대로
+    # 저장 키로 쓰면 Supabase Storage가 "Invalid key"로 거부해 업로드가 500으로
+    # 실패한다. 확장자만 남기고 나머지는 ASCII-safe한 랜덤 값으로 대체한다.
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'bin'
+    return f'request_attachments/{instance.request_id}/{uuid.uuid4().hex}.{ext}'
 
 
 class ReorderRequest(models.Model):
@@ -116,8 +126,11 @@ class RequestEvent(models.Model):
     action = models.CharField(max_length=30, choices=Action.choices)
     note = models.TextField(blank=True)
     attachment = models.FileField(
-        upload_to='request_attachments/%Y/%m/', null=True, blank=True,
+        upload_to=request_attachment_upload_to, null=True, blank=True,
         help_text='표시사항 가이드 등 지시사항에 첨부하는 참고 파일(선택) — 예: 1차검토에서 디자인 수정 요청 시')
+    attachment_original_name = models.CharField(
+        max_length=255, blank=True,
+        help_text='원본 파일명(저장 키는 한글 등을 피해 랜덤값으로 바뀌므로, 화면 표시용으로 따로 보관)')
     channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.SYSTEM)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -131,7 +144,9 @@ class RequestEvent(models.Model):
 
     @property
     def attachment_filename(self):
-        return self.attachment.name.rsplit('/', 1)[-1] if self.attachment else ''
+        if not self.attachment:
+            return ''
+        return self.attachment_original_name or self.attachment.name.rsplit('/', 1)[-1]
 
 
 class Notification(models.Model):

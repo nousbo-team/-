@@ -70,6 +70,7 @@ def effective_approvers():
 def _log(req, actor, action, note='', attachment=None):
     return RequestEvent.objects.create(
         request=req, actor=actor, action=action, note=note, attachment=attachment,
+        attachment_original_name=getattr(attachment, 'name', ''),
         channel=RequestEvent.Channel.SYSTEM)
 
 
