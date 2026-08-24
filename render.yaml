@@ -43,6 +43,12 @@ services:
         sync: false
       - key: AWS_S3_REGION_NAME
         sync: false
+      - key: PPURIO_ACCOUNT
+        sync: false
+      - key: PPURIO_API_SECRET
+        sync: false
+      - key: PPURIO_SENDER_PHONE
+        sync: false
       - key: SOLAPI_API_KEY
         sync: false
       - key: SOLAPI_API_SECRET

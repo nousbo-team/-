@@ -4,13 +4,17 @@
   2) 없고 settings.EMAIL_HOST가 있으면 SMTP로 발송 (사내망 IP 제한 등으로 막힐 수 있음)
   3) 둘 다 없으면 콘솔/로그로만 남는 모의(mock) 발송
 
-카카오톡/문자 발송 우선순위 (솔라피 Solapi 사용):
-  1) SOLAPI_API_KEY/SECRET + KAKAO_PF_ID + KAKAO_TEMPLATE_ID가 모두 있으면 카카오 알림톡으로
-     발송 (승인된 템플릿 필요 — 템플릿 변수는 #{message} 하나만 쓰는 구조를 가정)
-  2) 알림톡 조건이 안 채워졌어도 SOLAPI_API_KEY/SECRET + SOLAPI_SENDER_PHONE이 있으면 일반
-     SMS/LMS로 발송 (사전 승인된 템플릿이 없어도 자유 문구 발송 가능 — 우선 이걸로 시작하기 좋음)
-  3) 위 설정이 전혀 없으면 콘솔/로그로만 남는 모의(mock) 발송
-  4) 담당자 프로필에 휴대폰번호(phone_number)가 없으면 그 담당자는 애초에 수신 대상에서 제외
+카카오톡/문자 발송 우선순위:
+  1) PPURIO_ACCOUNT/API_SECRET/SENDER_PHONE이 있으면 뿌리오(비즈뿌리오)로 발송 — 개인 휴대폰
+     번호의 통신사 "번호도용문자차단서비스" 때문에 발신이 막히는 문제를 피하려고 전용
+     발신번호로 전환하며 도입. 토큰(24시간 유효)은 캐시해서 재사용한다.
+  2) 뿌리오 설정이 없고 SOLAPI_API_KEY/SECRET + KAKAO_PF_ID + KAKAO_TEMPLATE_ID가 모두 있으면
+     솔라피 경유 카카오 알림톡으로 발송 (승인된 템플릿 필요 — 템플릿 변수는 #{message} 하나만
+     쓰는 구조를 가정)
+  3) 알림톡 조건이 안 채워졌어도 SOLAPI_API_KEY/SECRET + SOLAPI_SENDER_PHONE이 있으면 솔라피로
+     일반 SMS/LMS 발송
+  4) 위 설정이 전혀 없으면 콘솔/로그로만 남는 모의(mock) 발송
+  5) 담당자 프로필에 휴대폰번호(phone_number)가 없으면 그 담당자는 애초에 수신 대상에서 제외
 
 웹 푸시(브라우저 알림):
   1) settings.VAPID_PUBLIC_KEY/PRIVATE_KEY가 있으면, 담당자가 "브라우저 알림 받기"를
@@ -31,19 +35,76 @@ import logging
 import uuid
 from datetime import datetime, timezone as dt_timezone
 
+import base64
+
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import send_mail
 
 logger = logging.getLogger('workflow.notify')
 
 BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 SOLAPI_SEND_ENDPOINT = 'https://api.solapi.com/messages/v4/send-many'
+PPURIO_TOKEN_ENDPOINT = 'https://api.bizppurio.com/v1/token'
+PPURIO_SEND_ENDPOINT = 'https://api.bizppurio.com/v3/message'
+PPURIO_TOKEN_CACHE_KEY = 'ppurio_access_token'
 
 
 class SolapiSendError(Exception):
     """Solapi가 메시지 이력에도 남기지 않고 요청 단계에서 거부한 경우(발신번호 미등록,
     잔액 부족, 요청 형식 오류 등) — 원인 문구를 그대로 담아 이력에 노출한다."""
+
+
+class PpurioSendError(Exception):
+    """뿌리오가 발송을 거부한 경우 — 원인 문구를 그대로 담아 이력에 노출한다."""
+
+
+def _ppurio_get_token():
+    """뿌리오 인증 토큰 발급(24시간 유효) — 매 발송마다 새로 받지 않도록 캐시한다."""
+    cached = cache.get(PPURIO_TOKEN_CACHE_KEY)
+    if cached:
+        return cached
+
+    credentials = base64.b64encode(
+        f'{settings.PPURIO_ACCOUNT}:{settings.PPURIO_API_SECRET}'.encode()).decode()
+    resp = requests.post(
+        PPURIO_TOKEN_ENDPOINT,
+        headers={'Authorization': f'Basic {credentials}', 'Content-Type': 'application/json; charset=utf-8'},
+        timeout=10)
+    if not resp.ok:
+        raise PpurioSendError(f'{resp.status_code} 토큰 발급 실패: {resp.text}'[:300])
+    data = resp.json()
+    token = f"{data['type']} {data['accesstoken']}"
+    # 만료(24h)보다 여유 있게 23시간만 캐시해 갱신 주기와 겹치지 않게 한다.
+    cache.set(PPURIO_TOKEN_CACHE_KEY, token, timeout=23 * 3600)
+    return token
+
+
+def _send_via_ppurio(phones, message):
+    """phones: 휴대폰번호 문자열 리스트. 수신자별로 한 건씩 발송한다."""
+    token = _ppurio_get_token()
+    headers = {'Authorization': token, 'Content-Type': 'application/json; charset=utf-8'}
+    text = message[:2000]
+    msg_type = 'sms' if len(text.encode('utf-8')) <= 90 else 'lms'
+
+    for phone in phones:
+        body = {
+            'account': settings.PPURIO_ACCOUNT,
+            'type': msg_type,
+            'from': settings.PPURIO_SENDER_PHONE,
+            'to': phone,
+            'country': '82',
+            'content': {msg_type: {'message': text}},
+        }
+        resp = requests.post(PPURIO_SEND_ENDPOINT, headers=headers, json=body, timeout=10)
+        if not resp.ok:
+            try:
+                reason = resp.json().get('description') or resp.text
+            except ValueError:
+                reason = resp.text
+            raise PpurioSendError(f'{resp.status_code} {reason}'[:300])
+    return 'SMS' if msg_type == 'sms' else 'LMS'
 
 
 def _solapi_auth_header(api_key, api_secret):
@@ -146,8 +207,21 @@ def send_kakao_mock(users, message):
     if not recipients:
         return 'no_recipients', ''
 
+    phones = [phone for _, phone in recipients]
+
+    if settings.PPURIO_ACCOUNT and settings.PPURIO_API_SECRET and settings.PPURIO_SENDER_PHONE:
+        try:
+            channel = _send_via_ppurio(phones, message)
+            logger.info('[KAKAO/SMS:PPURIO:%s] to=%s', channel, phones)
+            return 'sent', channel
+        except PpurioSendError as e:
+            logger.exception('[KAKAO/SMS:PPURIO] 발송 실패. to=%s', phones)
+            return 'failed', str(e)
+        except Exception as e:
+            logger.exception('[KAKAO/SMS:PPURIO] 발송 실패. to=%s', phones)
+            return 'failed', f'{type(e).__name__}: {e}'[:300]
+
     if settings.SOLAPI_API_KEY and settings.SOLAPI_API_SECRET and settings.SOLAPI_SENDER_PHONE:
-        phones = [phone for _, phone in recipients]
         try:
             channel = _send_via_solapi(phones, message)
             logger.info('[KAKAO/SMS:SOLAPI:%s] to=%s', channel, phones)

@@ -205,12 +205,18 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@nousbo.com')
 
-# 카카오톡/문자 — 솔라피(Solapi) API 키가 있으면 실제 SMS로 발송(추천, 발신번호 사전
-# 등록 필요). 카카오 알림톡은 이 시스템이 상황별로 자유 문구를 만들어 보내는 구조라
-# 이벤트마다 별도 템플릿을 등록하는 대신, 승인받은 "일반 알림 템플릿" 하나(예: 본문에
-# #{message} 변수 하나만 있는 형태)에 KAKAO_PF_ID + KAKAO_TEMPLATE_ID를 채우면 그
-# 템플릿으로 발송한다 — 어느 쪽도 없으면 SMS로, SMS 설정도 없으면 로그만 남는
-# 모의(mock) 발송으로 자동 대체된다.
+# 카카오톡/문자 — 뿌리오(비즈뿌리오)에 전용 발신번호를 등록해두면 그쪽을 우선 사용한다.
+# 개인 휴대폰 번호를 발신번호로 쓰면 통신사 "번호도용문자차단서비스"에 걸려 API 호출은
+# 성공해도 실제 문자가 도착하지 않는 문제가 있어, 전용 회선으로 전환하며 도입했다.
+PPURIO_ACCOUNT = os.environ.get('PPURIO_ACCOUNT', '')
+PPURIO_API_SECRET = os.environ.get('PPURIO_API_SECRET', '')  # 비즈뿌리오 계정 비밀번호
+PPURIO_SENDER_PHONE = os.environ.get('PPURIO_SENDER_PHONE', '')  # 뿌리오에 사전 등록된 발신번호
+
+# 솔라피(Solapi) — 뿌리오 설정이 없을 때의 대체 경로로 유지한다(레거시). 카카오 알림톡은
+# 이 시스템이 상황별로 자유 문구를 만들어 보내는 구조라 이벤트마다 별도 템플릿을 등록하는
+# 대신, 승인받은 "일반 알림 템플릿" 하나(예: 본문에 #{message} 변수 하나만 있는 형태)에
+# KAKAO_PF_ID + KAKAO_TEMPLATE_ID를 채우면 그 템플릿으로 발송한다 — 뿌리오·솔라피·알림톡
+# 설정이 모두 없으면 로그만 남는 모의(mock) 발송으로 자동 대체된다.
 SOLAPI_API_KEY = os.environ.get('SOLAPI_API_KEY', '')
 SOLAPI_API_SECRET = os.environ.get('SOLAPI_API_SECRET', '')
 SOLAPI_SENDER_PHONE = os.environ.get('SOLAPI_SENDER_PHONE', '')  # 솔라피에 사전 등록된 발신번호
