@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import timedelta
 
@@ -5,12 +6,23 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+# 다운로드 파일명에 그대로 못 쓰는 문자(Windows 기준 예약 문자) — 저장 키가 아니라
+# 화면에 보여주고 실제로 저장될 파일명을 만들 때 공통으로 쓰는 치환 규칙이다.
+_ILLEGAL_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|]')
+
+
+def sanitize_filename_part(text):
+    """다운로드 파일명 한 조각을 OS에서 안전하게 쓸 수 있도록 정리한다."""
+    cleaned = _ILLEGAL_FILENAME_CHARS.sub('_', text).strip()
+    return cleaned or 'file'
+
 
 def packaging_upload_to(instance, filename):
     # 원본 파일명(한글 등)을 그대로 저장 키로 쓰면 일부 S3 호환 스토리지
     # (Supabase Storage 등)가 "Invalid key"로 거부한다. 확장자만 남기고
     # 나머지는 ASCII-safe한 랜덤 값으로 대체 — 버전 구분은 DB의 version
-    # 필드가 담당하므로 파일명 자체가 원본을 보존할 필요는 없다.
+    # 필드가 담당하므로 파일명 자체가 원본을 보존할 필요는 없다. 사람이 보는
+    # 파일명은 저장 키가 아니라 다운로드 시점에 display_filename()으로 따로 만든다.
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'bin'
     return f'packaging/{instance.product_id}/{uuid.uuid4().hex}.{ext}'
 
@@ -107,3 +119,20 @@ class PackagingFile(models.Model):
 
     def is_locked(self):
         return self.status == PackagingFile.Status.FINAL_APPROVED
+
+    def _display_filename(self, field_file):
+        if not field_file:
+            return ''
+        ext = field_file.name.rsplit('.', 1)[-1] if '.' in field_file.name else 'bin'
+        date_str = (self.approved_at or self.uploaded_at).strftime('%Y%m%d')
+        name = sanitize_filename_part(self.product.name)
+        # 다운로드 파일명 규칙: 품목명_버전_날짜.확장자
+        return f'{name}_v{self.version}_{date_str}.{ext}'
+
+    @property
+    def ai_display_filename(self):
+        return self._display_filename(self.ai_file)
+
+    @property
+    def jpg_display_filename(self):
+        return self._display_filename(self.jpg_file)

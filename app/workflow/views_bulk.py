@@ -186,9 +186,14 @@ def bulk_download(request):
                 skipped.append(f'{product.code} {product.name}')
                 continue
             folder = re.sub(r'[\\/:*?"<>|]', '_', f'{product.code}_{product.name}')
-            for field, label in ((final_file.ai_file, 'ai'), (final_file.jpg_file, 'jpg')):
+            for field, display_name in (
+                (final_file.ai_file, final_file.ai_display_filename),
+                (final_file.jpg_file, final_file.jpg_display_filename),
+            ):
                 if field:
-                    arcname = f'{folder}/v{final_file.version}_{folder}.{label}'
+                    # 개별 다운로드(품목명_버전_날짜.확장자)와 같은 파일명 규칙을
+                    # 압축 파일 안에서도 그대로 적용한다.
+                    arcname = f'{folder}/{display_name}'
                     field.open('rb')
                     zf.writestr(arcname, field.read())
                     field.close()

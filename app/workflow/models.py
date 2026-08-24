@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from catalog.models import PackagingFile, Product
+from catalog.models import PackagingFile, Product, sanitize_filename_part
 
 
 def request_attachment_upload_to(instance, filename):
@@ -144,9 +144,16 @@ class RequestEvent(models.Model):
 
     @property
     def attachment_filename(self):
+        """다운로드 파일명 규칙: 요청번호_참고파일_날짜.확장자 (원본 파일명은
+        attachment_original_name에 별도 보관하되, 실제 저장·표시되는 이름은 이
+        규칙을 따른다 — 포장지 AI/JPG 파일과 동일한 정책)."""
         if not self.attachment:
             return ''
-        return self.attachment_original_name or self.attachment.name.rsplit('/', 1)[-1]
+        source_name = self.attachment_original_name or self.attachment.name
+        ext = source_name.rsplit('.', 1)[-1].lower() if '.' in source_name else 'bin'
+        date_str = self.created_at.strftime('%Y%m%d')
+        req_no = sanitize_filename_part(self.request.request_no)
+        return f'{req_no}_참고파일_{date_str}.{ext}'
 
 
 class Notification(models.Model):
