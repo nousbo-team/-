@@ -50,7 +50,7 @@
   <div class="empty-state">{{ empty_hint }}</div>
   {% elif pending %}
   <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>요청자</th><th>대기 경과</th><th></th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>{% if role == 'DESIGNER' %}지시자{% else %}요청자{% endif %}</th><th>대기 경과</th><th></th></tr></thead>
     <tbody>
       {% for r in pending %}
       <tr>
@@ -58,7 +58,11 @@
         <td data-label="품목">{{ r.product.name }}</td>
         <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
+        {% if role == 'DESIGNER' %}
+        <td data-label="지시자">{% if r.assigned_by %}{{ r.assigned_by.get_full_name|default:r.assigned_by.username }}{% else %}—{% endif %}</td>
+        {% else %}
         <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        {% endif %}
         <td data-label="대기 경과"{% if r.updated_at < stale_cutoff %} style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}</td>
         <td data-label="">
           {% if role == 'REVIEWER' and r.status == 'REVIEW1' %}

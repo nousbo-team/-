@@ -15,7 +15,7 @@ from accounts.models import UserProfile, get_profile
 
 from . import services
 from .forms import DesignUploadForm, NewRequestForm
-from .models import PushSubscription, ReorderRequest
+from .models import PushSubscription, ReorderRequest, RequestEvent
 
 
 def guide(request):
@@ -140,6 +140,14 @@ def dashboard(request):
         ).select_related('product', 'requester').order_by('-updated_at')
     elif role == UserProfile.Role.DESIGNER:
         pending = ReorderRequest.objects.filter(status=Status.DESIGN_EDIT).select_related('product')
+        # 디자인팀 입장에서 "요청자"는 최초 재발주를 올린 울산공장이 아니라, 지금 이
+        # 수정 지시를 내린 1차 검토·관리 창구 담당자(박현경 팀장 또는 부재 시 대체자
+        # 김신덕 본부장)다 — 건마다 가장 최근 수정 요청 이벤트의 처리자를 붙여준다.
+        for r in pending:
+            last_edit = r.events.filter(
+                action=RequestEvent.Action.REVIEW_REQUEST_EDIT
+            ).select_related('actor').order_by('-created_at').first()
+            r.assigned_by = last_edit.actor if last_edit else None
     elif role == UserProfile.Role.APPROVER:
         pending = ReorderRequest.objects.filter(status=Status.FINAL_REVIEW).select_related('product')
 
@@ -221,7 +229,7 @@ def new_request(request):
 def request_detail(request, pk):
     req = get_object_or_404(
         ReorderRequest.objects.select_related('product', 'requester', 'current_file'), pk=pk)
-    events = req.events.select_related('actor')
+    events = req.events.select_related('actor').order_by('-created_at')
 
     if request.method == 'POST':
         action = request.POST.get('action')
