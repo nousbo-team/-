@@ -26,6 +26,18 @@
 </div>
 
 <h2>일괄 다운로드 (최종 승인본 + 이력)</h2>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+    <div class="field" style="flex:1 1 240px;margin:0;">
+      <label>검색어</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="품목명, 품목코드">
+    </div>
+    <button class="btn btn-primary" type="submit">검색</button>
+    {% if q %}<a class="btn btn-ghost" href="{% url 'workflow:bulk' %}">초기화</a>{% endif %}
+  </form>
+</div>
+
 <div class="card">
   <form method="post" action="{% url 'workflow:bulk_download' %}">
     {% csrf_token %}
@@ -43,11 +55,26 @@
               {% if row.final_file %}<span class="pill pill-final">v{{ row.final_file.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}
             </td>
           </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:20px;">검색 조건에 맞는 품목이 없습니다.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <button class="btn btn-primary" type="submit" style="margin-top:12px;">선택한 품목 zip 다운로드 (manifest.csv 포함)</button>
+    <div class="hint" style="margin-top:8px;">체크박스 선택은 현재 페이지에만 적용됩니다 — 여러 페이지에 걸쳐 받으려면 페이지별로 나눠서 다운로드하세요.</div>
+    <button class="btn btn-primary" type="submit" style="margin-top:8px;">선택한 품목 zip 다운로드 (manifest.csv 포함)</button>
   </form>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination" style="display:flex;gap:8px;justify-content:center;padding:14px 0 4px;">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-ghost" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">이전</a>
+    {% endif %}
+    <span style="align-self:center;font-size:13px;color:var(--ink-soft);">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 페이지 (총 {{ page_obj.paginator.count }}건)</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-ghost" href="?q={{ q }}&page={{ page_obj.next_page_number }}">다음</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

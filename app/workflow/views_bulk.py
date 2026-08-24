@@ -7,6 +7,8 @@ from datetime import datetime
 import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -20,10 +22,20 @@ PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg)$', re.IGNORECASE)
 def bulk_home(request):
     """catalog.views.product_list와 같은 이유로 품목별 current_final_file()을 템플릿에서
     개별 호출하면 품목 수(현재 258건)만큼 쿼리가 늘어나 워커 타임아웃(502/500)으로
-    이어진다 — 최종 승인본을 한 번에 조회해 품목별로 파이썬에서 묶어 전달한다."""
-    products = list(Product.objects.filter(is_active=True).order_by('name'))
-    product_ids = [p.pk for p in products]
+    이어진다 — 최종 승인본을 한 번에 조회해 품목별로 파이썬에서 묶어 전달한다.
 
+    258건을 한 화면에 전부 그리면 스크롤이 너무 길어지므로, 검색(품목명·품목코드)과
+    페이지네이션으로 좁혀볼 수 있게 한다 — 매 페이지마다 그 페이지에 보이는 품목의
+    최종 승인본만 조회하므로 전체 건수가 늘어나도 쿼리 수는 늘지 않는다."""
+    q = request.GET.get('q', '').strip()
+    products = Product.objects.filter(is_active=True).order_by('name')
+    if q:
+        products = products.filter(Q(name__icontains=q) | Q(code__icontains=q))
+
+    paginator = Paginator(products, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    product_ids = [p.pk for p in page_obj]
     final_file_by_product = {}
     for f in (PackagingFile.objects
               .filter(product_id__in=product_ids, is_active=True,
@@ -31,8 +43,8 @@ def bulk_home(request):
               .order_by('product_id', '-version')):
         final_file_by_product.setdefault(f.product_id, f)  # 품목별로 최신 버전 하나만 남김
 
-    rows = [{'product': p, 'final_file': final_file_by_product.get(p.pk)} for p in products]
-    return render(request, 'workflow/bulk.html', {'rows': rows})
+    rows = [{'product': p, 'final_file': final_file_by_product.get(p.pk)} for p in page_obj]
+    return render(request, 'workflow/bulk.html', {'rows': rows, 'page_obj': page_obj, 'q': q})
 
 
 @login_required
