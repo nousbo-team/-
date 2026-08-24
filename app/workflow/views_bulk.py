@@ -18,8 +18,21 @@ PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg)$', re.IGNORECASE)
 
 @login_required
 def bulk_home(request):
-    products = Product.objects.filter(is_active=True).order_by('name')
-    return render(request, 'workflow/bulk.html', {'products': products})
+    """catalog.views.product_list와 같은 이유로 품목별 current_final_file()을 템플릿에서
+    개별 호출하면 품목 수(현재 258건)만큼 쿼리가 늘어나 워커 타임아웃(502/500)으로
+    이어진다 — 최종 승인본을 한 번에 조회해 품목별로 파이썬에서 묶어 전달한다."""
+    products = list(Product.objects.filter(is_active=True).order_by('name'))
+    product_ids = [p.pk for p in products]
+
+    final_file_by_product = {}
+    for f in (PackagingFile.objects
+              .filter(product_id__in=product_ids, is_active=True,
+                      status=PackagingFile.Status.FINAL_APPROVED)
+              .order_by('product_id', '-version')):
+        final_file_by_product.setdefault(f.product_id, f)  # 품목별로 최신 버전 하나만 남김
+
+    rows = [{'product': p, 'final_file': final_file_by_product.get(p.pk)} for p in products]
+    return render(request, 'workflow/bulk.html', {'rows': rows})
 
 
 @login_required

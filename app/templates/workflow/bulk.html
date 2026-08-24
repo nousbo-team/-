@@ -33,16 +33,14 @@
       <table>
         <thead><tr><th style="width:30px;"></th><th>품목코드</th><th>품목명</th><th>유형</th><th>최종 승인본</th></tr></thead>
         <tbody>
-          {% for p in products %}
+          {% for row in rows %}
           <tr>
-            <td data-label="선택"><input type="checkbox" name="products" value="{{ p.pk }}"></td>
-            <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ p.code }}</td>
-            <td data-label="품목명">{{ p.name }}</td>
-            <td data-label="유형">{{ p.get_category_display }}</td>
+            <td data-label="선택"><input type="checkbox" name="products" value="{{ row.product.pk }}"></td>
+            <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
+            <td data-label="품목명">{{ row.product.name }}</td>
+            <td data-label="유형">{{ row.product.get_category_display }}</td>
             <td data-label="최종 승인본">
-              {% with f=p.current_final_file %}
-              {% if f %}<span class="pill pill-final">v{{ f.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}
-              {% endwith %}
+              {% if row.final_file %}<span class="pill pill-final">v{{ row.final_file.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}
             </td>
           </tr>
           {% endfor %}

@@ -34,11 +34,11 @@
         </td>
         <td data-label="파일">
           {% if f.status == 'FINAL_APPROVED' %}
-          <a class="btn" href="{{ f.ai_file.url }}" download="{{ f.ai_display_filename }}">AI</a>
-          <a class="btn" href="{{ f.jpg_file.url }}" download="{{ f.jpg_display_filename }}">JPG</a>
+          <a class="btn" href="{{ f.ai_file.url }}" download="{{ f.ai_display_filename }}" target="_blank" rel="noopener">AI</a>
+          <a class="btn" href="{{ f.jpg_file.url }}" download="{{ f.jpg_display_filename }}" target="_blank" rel="noopener">JPG</a>
           {% else %}
-          <a class="btn btn-ghost" href="{{ f.ai_file.url }}" download="{{ f.ai_display_filename }}">AI</a>
-          <a class="btn btn-ghost" href="{{ f.jpg_file.url }}" download="{{ f.jpg_display_filename }}">JPG</a>
+          <a class="btn btn-ghost" href="{{ f.ai_file.url }}" download="{{ f.ai_display_filename }}" target="_blank" rel="noopener">AI</a>
+          <a class="btn btn-ghost" href="{{ f.jpg_file.url }}" download="{{ f.jpg_display_filename }}" target="_blank" rel="noopener">JPG</a>
           <div class="hint" style="color:var(--danger);margin-top:4px;">⚠ 승인본이 아닙니다 — 인쇄용으로 사용하지 마세요</div>
           {% endif %}
         </td>
