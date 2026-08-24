@@ -115,6 +115,9 @@ class RequestEvent(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     action = models.CharField(max_length=30, choices=Action.choices)
     note = models.TextField(blank=True)
+    attachment = models.FileField(
+        upload_to='request_attachments/%Y/%m/', null=True, blank=True,
+        help_text='표시사항 가이드 등 지시사항에 첨부하는 참고 파일(선택) — 예: 1차검토에서 디자인 수정 요청 시')
     channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.SYSTEM)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -125,6 +128,10 @@ class RequestEvent(models.Model):
 
     def __str__(self):
         return f'{self.request_id} · {self.get_action_display()}'
+
+    @property
+    def attachment_filename(self):
+        return self.attachment.name.rsplit('/', 1)[-1] if self.attachment else ''
 
 
 class Notification(models.Model):

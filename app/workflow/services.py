@@ -67,8 +67,10 @@ def effective_approvers():
     return _role_users(UserProfile.Role.APPROVER)
 
 
-def _log(req, actor, action, note=''):
-    return RequestEvent.objects.create(request=req, actor=actor, action=action, note=note, channel=RequestEvent.Channel.SYSTEM)
+def _log(req, actor, action, note='', attachment=None):
+    return RequestEvent.objects.create(
+        request=req, actor=actor, action=action, note=note, attachment=attachment,
+        channel=RequestEvent.Channel.SYSTEM)
 
 
 def _generate_request_no():
@@ -146,8 +148,9 @@ def create_request(product, requester, reason, detail=''):
     return req, None
 
 
-def review_decision(req, actor, decision, note='', use_exception=False):
-    """1차검토(REVIEW1) 처리. decision: 'CONFIRM_FINAL' | 'NEEDS_EDIT'."""
+def review_decision(req, actor, decision, note='', use_exception=False, attachment=None):
+    """1차검토(REVIEW1) 처리. decision: 'CONFIRM_FINAL' | 'NEEDS_EDIT'.
+    attachment: 디자인팀에 넘길 표시사항 가이드 등 참고 파일(선택, NEEDS_EDIT에서만 사용)."""
     if actor not in effective_reviewers():
         raise PermissionDeniedError('1차 검토·관리 창구 담당자만 처리할 수 있습니다.')
     if req.status != ReorderRequest.Status.REVIEW1:
@@ -157,9 +160,10 @@ def review_decision(req, actor, decision, note='', use_exception=False):
         if decision == 'NEEDS_EDIT':
             req.status = ReorderRequest.Status.DESIGN_EDIT
             req.save(update_fields=['status', 'updated_at'])
-            _log(req, actor, RequestEvent.Action.REVIEW_REQUEST_EDIT, note=note)
+            _log(req, actor, RequestEvent.Action.REVIEW_REQUEST_EDIT, note=note, attachment=attachment)
+            attach_note = ' (참고 파일 첨부됨)' if attachment else ''
             _notify(req, effective_designers(),
-                    f'"{req.product.name}" 디자인 수정이 필요합니다: {note}', kakao=True)
+                    f'"{req.product.name}" 디자인 수정이 필요합니다: {note}{attach_note}', kakao=True)
         elif decision == 'CONFIRM_FINAL':
             if use_exception and req.current_file and req.current_file.within_exception_window():
                 req.status = ReorderRequest.Status.COMPLETED

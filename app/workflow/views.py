@@ -225,7 +225,8 @@ def request_detail(request, pk):
                 messages.success(request, '최종본 확인 처리했습니다.')
             elif action == 'review_edit':
                 note = request.POST.get('note', '')
-                services.review_decision(req, request.user, 'NEEDS_EDIT', note=note)
+                attachment = request.FILES.get('attachment')
+                services.review_decision(req, request.user, 'NEEDS_EDIT', note=note, attachment=attachment)
                 messages.success(request, '디자인 수정을 요청했습니다.')
             elif action == 'design_upload':
                 form = DesignUploadForm(request.POST, request.FILES)

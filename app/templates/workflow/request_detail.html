@@ -48,10 +48,15 @@
     </div>
   </form>
   {% endif %}
-  <form method="post" class="actions-row" style="margin-top:10px;">
+  <form method="post" enctype="multipart/form-data" class="actions-row" style="align-items:flex-start;margin-top:10px;flex-wrap:wrap;">
     {% csrf_token %}
-    <textarea name="note" placeholder="수정 지시사항을 입력하세요" style="flex:1;min-height:60px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;"></textarea>
-    <button class="btn" type="submit" name="action" value="review_edit">수정 필요 → 디자인 요청</button>
+    <textarea name="note" placeholder="수정 지시사항을 입력하세요" style="flex:1;min-width:220px;min-height:60px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;"></textarea>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <label style="font-size:12px;color:var(--ink-soft);">참고 파일(표시사항 가이드 등, 선택)<br>
+        <input type="file" name="attachment" style="font-size:12.5px;margin-top:2px;">
+      </label>
+      <button class="btn" type="submit" name="action" value="review_edit">수정 필요 → 디자인 요청</button>
+    </div>
   </form>
 
   {% elif req.status == 'DESIGN_EDIT' and is_designer %}
@@ -114,6 +119,13 @@
       {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
     </div>
     {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
+    {% if e.attachment %}
+    <div style="margin-top:4px;">
+      <a class="btn btn-ghost" href="{{ e.attachment.url }}" download style="padding:3px 9px;font-size:12px;">
+        📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
+      </a>
+    </div>
+    {% endif %}
     <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
   </li>
   {% endfor %}
