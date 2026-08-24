@@ -119,6 +119,7 @@ def dashboard(request):
     my_requests = None
     pending = None
     empty_hint = None
+    all_active = None
 
     if role == UserProfile.Role.REQUESTER:
         my_requests = ReorderRequest.objects.filter(
@@ -132,6 +133,11 @@ def dashboard(request):
         else:
             pending = ReorderRequest.objects.none()
             empty_hint = '현재 담당 리뷰어가 활성 상태입니다. 담당자가 부재중으로 설정하면 이 목록에 대기건이 표시됩니다.'
+        # 1차 검토·관리 창구는 지금 내 차례가 아니어도 회사 전체 건이 어디까지 왔는지
+        # 항상 확인할 수 있어야 한다 — 처리할 건이 없다고 화면이 텅 비지 않도록 별도로 노출.
+        all_active = ReorderRequest.objects.exclude(
+            status__in=ReorderRequest.TERMINAL_STATUSES
+        ).select_related('product', 'requester').order_by('-updated_at')
     elif role == UserProfile.Role.DESIGNER:
         pending = ReorderRequest.objects.filter(status=Status.DESIGN_EDIT).select_related('product')
     elif role == UserProfile.Role.APPROVER:
@@ -142,6 +148,7 @@ def dashboard(request):
         'my_requests': my_requests,
         'pending': pending,
         'empty_hint': empty_hint,
+        'all_active': all_active,
         'stale_cutoff': timezone.now() - timedelta(days=3),
     })
 

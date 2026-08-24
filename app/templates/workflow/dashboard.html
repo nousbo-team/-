@@ -93,6 +93,32 @@
 </div>
 {% endif %}
 
+{% if all_active is not None %}
+<h2 style="margin-top:32px;">전체 진행중 현황</h2>
+<p class="subtitle">지금 내가 처리할 건이 없어도, 회사 전체 재발주 건이 어느 단계에 있는지 항상 확인할 수 있습니다.</p>
+<div class="card table-wrap">
+  {% if all_active %}
+  <table>
+    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>요청자</th><th>최근 업데이트</th></tr></thead>
+    <tbody>
+      {% for r in all_active %}
+      <tr>
+        <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td data-label="품목">{{ r.product.name }}</td>
+        <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
+        <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
+        <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        <td data-label="최근 업데이트">{{ r.updated_at|timesince }} 전</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">진행중인 재발주 건이 없습니다.</div>
+  {% endif %}
+</div>
+{% endif %}
+
 <script>
 function quickReject(formEl, confirmMessage) {
   if (!window.confirm(confirmMessage)) return false;
