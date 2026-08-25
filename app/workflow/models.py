@@ -6,6 +6,14 @@ from django.db import models
 from catalog.models import PackagingFile, Product, sanitize_filename_part
 
 
+_NOTIFY_STATUS_LABEL_KO = {
+    'sent': '발송 성공',
+    'failed': '발송 실패',
+    'mock': '모의 — 실제 미발송',
+    'no_recipients': '수신자 없음',
+}
+
+
 def request_attachment_upload_to(instance, filename):
     # catalog.models.packaging_upload_to와 같은 이유 — 원본 파일명(한글 등)을 그대로
     # 저장 키로 쓰면 Supabase Storage가 "Invalid key"로 거부해 업로드가 500으로
@@ -132,6 +140,12 @@ class RequestEvent(models.Model):
         max_length=255, blank=True,
         help_text='원본 파일명(저장 키는 한글 등을 피해 랜덤값으로 바뀌므로, 화면 표시용으로 따로 보관)')
     channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.SYSTEM)
+    # NOTIFY 건에서만 채워진다 — 'sent'|'failed'|'mock'|'no_recipients' (notify.py가 반환하는
+    # status 그대로). 값이 비어있으면(과거 이력 포함) 그 채널은 아예 시도하지 않았거나
+    # 아직 이 필드가 생기기 전 이력이라는 뜻 — 타임라인에서 배지를 표시하지 않는다.
+    email_status = models.CharField(max_length=20, blank=True)
+    push_status = models.CharField(max_length=20, blank=True)
+    kakao_status = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -154,6 +168,22 @@ class RequestEvent(models.Model):
         date_str = self.created_at.strftime('%Y%m%d')
         req_no = sanitize_filename_part(self.request.request_no)
         return f'{req_no}_참고파일_{date_str}.{ext}'
+
+    @property
+    def notify_badges(self):
+        """알림 발송(NOTIFY) 이력을 타임라인에 '이메일 ●, 카카오톡/문자 X'처럼 간단히
+        보여주기 위한 배지 목록. status가 비어있으면(그 채널을 아예 시도하지 않았거나
+        이 필드가 생기기 전의 과거 이력) 배지 자체를 만들지 않는다."""
+        badges = []
+        for label, status in (
+            ('이메일', self.email_status),
+            ('브라우저 알림', self.push_status),
+            ('카카오톡/문자', self.kakao_status),
+        ):
+            if not status:
+                continue
+            badges.append({'label': label, 'ok': status == 'sent', 'status_label': _NOTIFY_STATUS_LABEL_KO.get(status, status)})
+        return badges
 
 
 class Notification(models.Model):

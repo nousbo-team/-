@@ -104,6 +104,7 @@ def _notify(req, users, message, kakao=False):
         push_line += f' ({push_detail})'
     lines.append(push_line)
 
+    kakao_status = ''
     if kakao:
         kakao_status, kakao_detail = send_kakao_mock(users, message)
         kakao_line = f'· 카카오톡/문자: {_NOTIFY_STATUS_LABEL[kakao_status]}'
@@ -116,6 +117,7 @@ def _notify(req, users, message, kakao=False):
     RequestEvent.objects.create(
         request=req, actor=None, action=RequestEvent.Action.NOTIFY,
         note='\n'.join(lines), channel=RequestEvent.Channel.SYSTEM,
+        email_status=email_status, push_status=push_status, kakao_status=kakao_status,
     )
 
 

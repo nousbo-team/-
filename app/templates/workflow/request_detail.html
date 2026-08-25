@@ -12,122 +12,146 @@
 <p class="subtitle" style="margin-top:-8px;">요청사항: {{ req.detail|linebreaksbr }}</p>
 {% endif %}
 
-<h2>현재 파일</h2>
-<div class="card">
-  {% if req.current_file %}
-  v{{ req.current_file.version }} —
-  {% if req.current_file.status == 'FINAL_APPROVED' %}<span class="pill pill-final">최종 승인본</span>
-  {% else %}<span class="pill pill-review1">{{ req.current_file.get_status_display }}</span>{% endif %}
-  <div class="actions-row">
-    <a class="btn" href="{{ req.current_file.ai_file.url }}" download="{{ req.current_file.ai_display_filename }}" target="_blank" rel="noopener">AI 다운로드</a>
-    <a class="btn" href="{{ req.current_file.jpg_file.url }}" download="{{ req.current_file.jpg_display_filename }}" target="_blank" rel="noopener">JPG 다운로드</a>
-    <a class="btn btn-ghost" href="{% url 'catalog:product_detail' req.product.pk %}">전체 버전 이력 보기</a>
-  </div>
-  {% else %}
-  <div class="empty-state">연결된 파일이 없습니다.</div>
-  {% endif %}
-</div>
-
-<h2>처리</h2>
-<div class="card">
-  {% if req.status == 'REVIEW1' and is_reviewer %}
-  <p class="subtitle" style="margin-bottom:10px;">최종본 여부를 판단하세요. 그동안 다른 채널로 접수된 오타·수정요청이 있다면 "수정 필요"로 반영하세요.</p>
-  {% if not req.current_file %}
-  <div class="messages"><li class="warning" style="list-style:none;">이 품목에는 아직 등록된 파일이 없습니다 — "수정 필요"로 디자인팀에 최초 파일 제작을 요청하세요.</li></div>
-  {% endif %}
-  {% if req.current_file %}
-  <form method="post" class="actions-row" style="align-items:flex-start;">
-    {% csrf_token %}
-    <div>
-      {% if exception_available %}
-      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:8px;">
-        <input type="checkbox" name="use_exception"> 최근 3개월 이내 승인 이력 있음 — 최종검수 생략하고 바로 완료 처리
-      </label>
+<div class="request-detail-grid">
+  <div class="request-detail-main">
+    <h2>현재 파일</h2>
+    <div class="card">
+      {% if req.current_file %}
+      v{{ req.current_file.version }} —
+      {% if req.current_file.status == 'FINAL_APPROVED' %}<span class="pill pill-final">최종 승인본</span>
+      {% else %}<span class="pill pill-review1">{{ req.current_file.get_status_display }}</span>{% endif %}
+      <div class="actions-row">
+        <a class="btn" href="{{ req.current_file.ai_file.url }}" download="{{ req.current_file.ai_display_filename }}" target="_blank" rel="noopener">AI 다운로드</a>
+        <a class="btn" href="{{ req.current_file.jpg_file.url }}" download="{{ req.current_file.jpg_display_filename }}" target="_blank" rel="noopener">JPG 다운로드</a>
+        <a class="btn btn-ghost" href="{% url 'catalog:product_detail' req.product.pk %}">전체 버전 이력 보기</a>
+      </div>
+      {% else %}
+      <div class="empty-state">연결된 파일이 없습니다.</div>
       {% endif %}
-      <button class="btn btn-primary" type="submit" name="action" value="review_confirm">최종본 확인 → 최종검수 요청</button>
     </div>
-  </form>
-  {% endif %}
-  <form method="post" enctype="multipart/form-data" class="actions-row" style="align-items:flex-start;margin-top:10px;flex-wrap:wrap;">
-    {% csrf_token %}
-    <textarea name="note" placeholder="수정 지시사항을 입력하세요" style="flex:1;min-width:220px;min-height:60px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;"></textarea>
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      <label style="font-size:12px;color:var(--ink-soft);">참고 파일(표시사항 가이드 등, 선택)<br>
-        <input type="file" name="attachment" style="font-size:12.5px;margin-top:2px;">
-      </label>
-      <button class="btn" type="submit" name="action" value="review_edit">수정 필요 → 디자인 요청</button>
+
+    <h2>처리</h2>
+    <div class="card">
+      {% if req.status == 'REVIEW1' and is_reviewer %}
+      <p class="subtitle" style="margin-bottom:10px;">최종본 여부를 판단하세요. 그동안 다른 채널로 접수된 오타·수정요청이 있다면 "수정 필요"로 반영하세요.</p>
+      {% if not req.current_file %}
+      <div class="messages"><li class="warning" style="list-style:none;">이 품목에는 아직 등록된 파일이 없습니다 — "수정 필요"로 디자인팀에 최초 파일 제작을 요청하세요.</li></div>
+      {% endif %}
+      {% if req.current_file %}
+      <form method="post" class="actions-row" style="align-items:flex-start;">
+        {% csrf_token %}
+        <div>
+          {% if exception_available %}
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:8px;">
+            <input type="checkbox" name="use_exception"> 최근 3개월 이내 승인 이력 있음 — 최종검수 생략하고 바로 완료 처리
+          </label>
+          {% endif %}
+          <button class="btn btn-primary" type="submit" name="action" value="review_confirm">최종본 확인 → 최종검수 요청</button>
+        </div>
+      </form>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="actions-row" style="align-items:flex-start;margin-top:10px;flex-wrap:wrap;">
+        {% csrf_token %}
+        <textarea name="note" placeholder="수정 지시사항을 입력하세요" style="flex:1;min-width:220px;min-height:60px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;color:var(--ink-soft);">참고 파일(표시사항 가이드 등, 선택)<br>
+            <input type="file" name="attachment" style="font-size:12.5px;margin-top:2px;">
+          </label>
+          <button class="btn" type="submit" name="action" value="review_edit">수정 필요 → 디자인 요청</button>
+        </div>
+      </form>
+
+      {% elif req.status == 'DESIGN_EDIT' and is_designer %}
+      <p class="subtitle" style="margin-bottom:10px;">수정된 파일을 업로드하세요. 업로드 시 새 버전으로 기록되고 1차 검토로 재확인 요청됩니다.</p>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="field"><label>AI 파일</label>{{ design_form.ai_file }}</div>
+        <div class="field"><label>JPG 파일</label>{{ design_form.jpg_file }}</div>
+        <div class="field"><label>수정 내용</label>{{ design_form.note }}</div>
+        <button class="btn btn-primary" type="submit" name="action" value="design_upload">수정 파일 업로드</button>
+      </form>
+
+      {% elif req.status == 'FINAL_REVIEW' and is_approver %}
+      <p class="subtitle" style="margin-bottom:10px;">최종 검수 결과를 처리하세요. 반려 시 사유는 필수입니다.</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="field"><label>수정필요 / 반려 사유</label><textarea name="reason" placeholder="수정필요 또는 반려 시 사유를 입력하세요"></textarea></div>
+        <div class="actions-row">
+          <button class="btn btn-primary" type="submit" name="action" value="final_approve">승인</button>
+          <button class="btn" type="submit" name="action" value="final_revision">수정 필요(경미)</button>
+          <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+        </div>
+      </form>
+
+      {% elif req.status == 'FINAL_REVIEW' and is_reviewer %}
+      <p class="subtitle" style="margin-bottom:10px;">연구소 최종검수 대기 중입니다. 승인/수정필요 처리는 연구소 담당이며, 문제가 있다고 판단되면 사유를 기재하고 반려할 수 있습니다.</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="field"><label>반려 사유 (필수)</label><textarea name="reason" placeholder="반려 사유를 입력하세요" required></textarea></div>
+        <div class="actions-row">
+          <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+        </div>
+      </form>
+
+      {% elif req.status == 'APPROVED' and is_reviewer %}
+      <p class="subtitle" style="margin-bottom:10px;">연구소 승인이 완료되었습니다. 최종파일을 관리하고 울산공장(요청자)에게 전달하세요.</p>
+      <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-primary" type="submit" name="action" value="handoff">최종파일 전달 · 완료 처리</button>
+      </form>
+
+      {% elif req.status == 'COMPLETED' %}
+      <div class="empty-state">완료된 건입니다. 최종 승인본은 위 "현재 파일"에서 다운로드할 수 있습니다.</div>
+
+      {% elif req.status == 'CANCELLED' %}
+      <div class="empty-state">취소된 건입니다.</div>
+
+      {% else %}
+      <div class="empty-state">현재 단계에서 처리 권한이 없습니다 — 담당자를 기다려주세요.</div>
+      {% endif %}
     </div>
-  </form>
+  </div>
 
-  {% elif req.status == 'DESIGN_EDIT' and is_designer %}
-  <p class="subtitle" style="margin-bottom:10px;">수정된 파일을 업로드하세요. 업로드 시 새 버전으로 기록되고 1차 검토로 재확인 요청됩니다.</p>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <div class="field"><label>AI 파일</label>{{ design_form.ai_file }}</div>
-    <div class="field"><label>JPG 파일</label>{{ design_form.jpg_file }}</div>
-    <div class="field"><label>수정 내용</label>{{ design_form.note }}</div>
-    <button class="btn btn-primary" type="submit" name="action" value="design_upload">수정 파일 업로드</button>
-  </form>
+  <div class="request-detail-timeline">
+    <h2>이력 (타임라인)</h2>
+    <ul class="timeline">
+      {% for e in events %}
+      <li>
+        <div>
+          <strong>{{ e.get_action_display }}</strong>
+          {% if e.actor %}— {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}
+          {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
+        </div>
+        <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
 
-  {% elif req.status == 'FINAL_REVIEW' and is_approver %}
-  <p class="subtitle" style="margin-bottom:10px;">최종 검수 결과를 처리하세요. 반려 시 사유는 필수입니다.</p>
-  <form method="post">
-    {% csrf_token %}
-    <div class="field"><label>수정필요 / 반려 사유</label><textarea name="reason" placeholder="수정필요 또는 반려 시 사유를 입력하세요"></textarea></div>
-    <div class="actions-row">
-      <button class="btn btn-primary" type="submit" name="action" value="final_approve">승인</button>
-      <button class="btn" type="submit" name="action" value="final_revision">수정 필요(경미)</button>
-      <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
-    </div>
-  </form>
+        {% if e.action == 'NOTIFY' %}
+          {% if e.notify_badges %}
+          <div class="notify-badges">
+            {% for b in e.notify_badges %}
+            <span class="notify-badge {% if b.ok %}ok{% else %}fail{% endif %}" title="{{ b.status_label }}">{{ b.label }} {% if b.ok %}●{% else %}X{% endif %}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if e.note %}
+          <details class="notify-detail">
+            <summary>상세 내용</summary>
+            <div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>
+          </details>
+          {% endif %}
+        {% else %}
+          {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
+        {% endif %}
 
-  {% elif req.status == 'FINAL_REVIEW' and is_reviewer %}
-  <p class="subtitle" style="margin-bottom:10px;">연구소 최종검수 대기 중입니다. 승인/수정필요 처리는 연구소 담당이며, 문제가 있다고 판단되면 사유를 기재하고 반려할 수 있습니다.</p>
-  <form method="post">
-    {% csrf_token %}
-    <div class="field"><label>반려 사유 (필수)</label><textarea name="reason" placeholder="반려 사유를 입력하세요" required></textarea></div>
-    <div class="actions-row">
-      <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
-    </div>
-  </form>
-
-  {% elif req.status == 'APPROVED' and is_reviewer %}
-  <p class="subtitle" style="margin-bottom:10px;">연구소 승인이 완료되었습니다. 최종파일을 관리하고 울산공장(요청자)에게 전달하세요.</p>
-  <form method="post">
-    {% csrf_token %}
-    <button class="btn btn-primary" type="submit" name="action" value="handoff">최종파일 전달 · 완료 처리</button>
-  </form>
-
-  {% elif req.status == 'COMPLETED' %}
-  <div class="empty-state">완료된 건입니다. 최종 승인본은 위 "현재 파일"에서 다운로드할 수 있습니다.</div>
-
-  {% elif req.status == 'CANCELLED' %}
-  <div class="empty-state">취소된 건입니다.</div>
-
-  {% else %}
-  <div class="empty-state">현재 단계에서 처리 권한이 없습니다 — 담당자를 기다려주세요.</div>
-  {% endif %}
+        {% if e.attachment %}
+        <div style="margin-top:4px;">
+          <a class="btn btn-ghost" href="{{ e.attachment.url }}" download="{{ e.attachment_filename }}" target="_blank" rel="noopener" style="padding:3px 9px;font-size:12px;">
+            📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
+          </a>
+        </div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
-
-<h2>이력 (타임라인)</h2>
-<ul class="timeline">
-  {% for e in events %}
-  <li>
-    <div>
-      <strong>{{ e.get_action_display }}</strong>
-      {% if e.actor %}— {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}
-      {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
-    </div>
-    {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
-    {% if e.attachment %}
-    <div style="margin-top:4px;">
-      <a class="btn btn-ghost" href="{{ e.attachment.url }}" download="{{ e.attachment_filename }}" target="_blank" rel="noopener" style="padding:3px 9px;font-size:12px;">
-        📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
-      </a>
-    </div>
-    {% endif %}
-    <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
-  </li>
-  {% endfor %}
-</ul>
 {% endblock %}
