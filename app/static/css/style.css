@@ -102,7 +102,7 @@ a { color: var(--accent-ink); }
   }
 }
 
-.wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 28px 20px 60px; }
 .wrap.narrow { max-width: 520px; }
 
 h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin: 0 0 4px; }
@@ -129,6 +129,19 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lin
 thead th { color: var(--ink-soft); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .02em; }
 tbody tr:hover { background: var(--accent-soft); }
 .table-wrap { overflow-x: auto; }
+
+/* 데스크톱에서 셀 안 텍스트가 길어 줄바꿈되면 표 높이가 들쭉날쭉해진다 — 한 줄로
+   유지하고 넘치는 부분은 ...으로 줄인다. 실제 전체 값은 title 속성(툴팁)으로 노출.
+   모바일(표→카드 전환, 700px 이하)에서는 줄바꿈이 자연스러우므로 적용하지 않는다. */
+@media (min-width: 701px) {
+  .truncate {
+    display: block;
+    max-width: var(--truncate-width, 320px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 
 /* 좁은 화면에서는 가로 스크롤 대신 행 하나하나를 카드로 쌓는다 — 각 셀의
    data-label 속성을 항목명으로 앞에 붙여서 표시(각 템플릿에서 <td data-label="...">

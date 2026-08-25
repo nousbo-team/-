@@ -42,7 +42,9 @@
           <div class="hint" style="color:var(--danger);margin-top:4px;">⚠ 승인본이 아닙니다 — 인쇄용으로 사용하지 마세요</div>
           {% endif %}
         </td>
-        <td data-label="비고" style="font-size:12.5px;color:var(--ink-soft);">{{ f.note|default:'—' }}</td>
+        <td data-label="비고" style="font-size:12.5px;color:var(--ink-soft);">
+          <span class="truncate" style="--truncate-width:220px;" title="{{ f.note }}">{{ f.note|default:'—' }}</span>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

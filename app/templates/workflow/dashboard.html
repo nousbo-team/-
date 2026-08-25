@@ -19,7 +19,7 @@
       {% for r in my_requests %}
       <tr>
         <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
-        <td data-label="품목">{{ r.product.name }}</td>
+        <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
         <td data-label="사유">{{ r.get_reason_display }}</td>
         <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
@@ -55,7 +55,7 @@
       {% for r in pending %}
       <tr>
         <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
-        <td data-label="품목">{{ r.product.name }}</td>
+        <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
         <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
         {% if role == 'DESIGNER' %}
@@ -108,7 +108,7 @@
       {% for r in all_active %}
       <tr>
         <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
-        <td data-label="품목">{{ r.product.name }}</td>
+        <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
         <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
         <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
         <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>

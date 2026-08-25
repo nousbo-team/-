@@ -49,7 +49,7 @@
           <tr>
             <td data-label="선택"><input type="checkbox" name="products" value="{{ row.product.pk }}"></td>
             <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
-            <td data-label="품목명">{{ row.product.name }}</td>
+            <td data-label="품목명"><span class="truncate" title="{{ row.product.name }}">{{ row.product.name }}</span></td>
             <td data-label="유형">{{ row.product.get_category_display }}</td>
             <td data-label="최종 승인본">
               {% if row.final_file %}<span class="pill pill-final">v{{ row.final_file.version }}</span>{% else %}<span style="color:var(--ink-soft);font-size:12px;">없음</span>{% endif %}

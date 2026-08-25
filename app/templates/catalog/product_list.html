@@ -21,7 +21,7 @@
       {% for row in rows %}
       <tr>
         <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ row.product.code }}</td>
-        <td data-label="품목명"><a href="{% url 'catalog:product_detail' row.product.pk %}">{{ row.product.name }}</a></td>
+        <td data-label="품목명"><a class="truncate" href="{% url 'catalog:product_detail' row.product.pk %}" title="{{ row.product.name }}">{{ row.product.name }}</a></td>
         <td data-label="유형">{{ row.product.get_category_display }}</td>
         <td data-label="제품군">{{ row.product.get_product_line_display }}</td>
         <td data-label="최종 승인본">
