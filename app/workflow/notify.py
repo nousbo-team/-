@@ -15,8 +15,9 @@
      번호의 통신사 "번호도용문자차단서비스" 때문에 발신이 막히는 문제를 피하려고 전용
      발신번호로 전환하며 도입. 토큰(24시간 유효)은 캐시해서 재사용한다.
   2) 뿌리오 설정이 없고 SOLAPI_API_KEY/SECRET + KAKAO_PF_ID + KAKAO_TEMPLATE_ID가 모두 있으면
-     솔라피 경유 카카오 알림톡으로 발송 (승인된 템플릿 필요 — 템플릿 변수는 #{message} 하나만
-     쓰는 구조를 가정)
+     솔라피 경유 카카오 알림톡으로 발송 (승인된 템플릿 필요 — 템플릿 변수는 #{name}=받는 사람
+     이름, #{package_name}=품명 두 개를 쓰는 구조로 맞춰져 있다. 승인된 실제 템플릿의 변수명이
+     다르면 _send_via_solapi의 kakaoOptions.variables를 그에 맞게 고쳐야 한다)
   3) 알림톡 조건이 안 채워졌어도 SOLAPI_API_KEY/SECRET + SOLAPI_SENDER_PHONE이 있으면 솔라피로
      일반 SMS/LMS 발송
   4) 위 설정이 전혀 없으면 콘솔/로그로만 남는 모의(mock) 발송
@@ -121,18 +122,20 @@ def _solapi_auth_header(api_key, api_secret):
     return f'HMAC-SHA256 apiKey={api_key}, date={date}, salt={salt}, signature={signature}'
 
 
-def _send_via_solapi(phones, message):
-    """phones: 휴대폰번호 문자열 리스트. 카카오 알림톡 설정이 갖춰져 있으면 알림톡으로,
-    아니면 일반 SMS/LMS로 발송한다."""
+def _send_via_solapi(recipients, product_name, message):
+    """recipients: [(phone, name), ...]. 카카오 알림톡 설정이 갖춰져 있으면, 승인된
+    템플릿 변수(#{name}=받는 사람 이름, #{package_name}=품명)를 채운 알림톡으로
+    보낸다 — 자유 문구가 아니라 승인된 템플릿 문구 그대로 나가고 이 두 변수만
+    치환된다. 알림톡 설정이 없으면 자유 문구 그대로 일반 SMS/LMS로 발송한다."""
     use_kakao = bool(settings.KAKAO_PF_ID and settings.KAKAO_TEMPLATE_ID)
 
-    def _one_message(phone):
+    def _one_message(phone, name):
         base = {'to': phone, 'from': settings.SOLAPI_SENDER_PHONE}
         if use_kakao:
             base['kakaoOptions'] = {
                 'pfId': settings.KAKAO_PF_ID,
                 'templateId': settings.KAKAO_TEMPLATE_ID,
-                'variables': {'#{message}': message},
+                'variables': {'#{name}': name, '#{package_name}': product_name},
                 'disableSms': False,  # 알림톡 실패 시 문자로 자동 대체
             }
         else:
@@ -145,7 +148,7 @@ def _send_via_solapi(phones, message):
     }
     resp = requests.post(
         SOLAPI_SEND_ENDPOINT, headers=headers,
-        json={'messages': [_one_message(p) for p in phones]}, timeout=10)
+        json={'messages': [_one_message(phone, name) for phone, name in recipients]}, timeout=10)
     if not resp.ok:
         # Solapi는 검증 단계에서 거부한 요청(미등록 발신번호, 잘못된 요청 등)은
         # 메시지 이력에 아예 남기지 않는다 — 응답 본문이 유일한 단서이므로 그대로
@@ -248,17 +251,22 @@ def send_email_mock(users, subject, message, req=None):
     return 'sent', channel
 
 
-def send_kakao_mock(users, message):
+def send_kakao_mock(users, message, req=None):
+    """req가 있으면 승인된 알림톡 템플릿의 #{package_name} 변수를 채울 품명으로
+    쓴다(req 없이는 알림톡 발송이 의미가 없으므로 SMS 자유 문구로만 보내진다)."""
     recipients = []
     for u in users:
         profile = getattr(u, 'profile', None)
         phone = getattr(profile, 'phone_number', '') if profile else ''
         if phone:
-            recipients.append((u, phone))
+            name = u.get_full_name() or u.username
+            recipients.append((u, phone, name))
     if not recipients:
         return 'no_recipients', ''
 
-    phones = [phone for _, phone in recipients]
+    phones = [phone for _, phone, _ in recipients]
+    phones_with_names = [(phone, name) for _, phone, name in recipients]
+    product_name = req.product.name if req else ''
 
     if settings.PPURIO_ACCOUNT and settings.PPURIO_API_SECRET and settings.PPURIO_SENDER_PHONE:
         try:
@@ -274,7 +282,7 @@ def send_kakao_mock(users, message):
 
     if settings.SOLAPI_API_KEY and settings.SOLAPI_API_SECRET and settings.SOLAPI_SENDER_PHONE:
         try:
-            channel = _send_via_solapi(phones, message)
+            channel = _send_via_solapi(phones_with_names, product_name, message)
             logger.info('[KAKAO/SMS:SOLAPI:%s] to=%s', channel, phones)
             return 'sent', channel
         except SolapiSendError as e:
@@ -284,7 +292,7 @@ def send_kakao_mock(users, message):
             logger.exception('[KAKAO/SMS:SOLAPI] 발송 실패. to=%s', phones)
             return 'failed', f'{type(e).__name__}: {e}'[:300]
 
-    for u, phone in recipients:
+    for u, phone, _ in recipients:
         logger.info('[MOCK KAKAO/SMS] to=%s(%s) message=%s', u.username, phone, message)
     return 'mock', ''
 

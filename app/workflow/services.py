@@ -106,7 +106,7 @@ def _notify(req, users, message, kakao=False):
 
     kakao_status = ''
     if kakao:
-        kakao_status, kakao_detail = send_kakao_mock(users, message)
+        kakao_status, kakao_detail = send_kakao_mock(users, message, req=req)
         kakao_line = f'· 카카오톡/문자: {_NOTIFY_STATUS_LABEL[kakao_status]}'
         if kakao_status == 'failed' and kakao_detail:
             kakao_line += f' — {kakao_detail}'
