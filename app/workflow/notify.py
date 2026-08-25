@@ -7,6 +7,8 @@
     요청사항과 "요청 상세보기" 버튼이 있는 카드형 HTML 메일(emails/notify_email.html)로
     보낸다 — 텍스트 버전도 항상 함께 실려서(멀티파트) HTML을 못 읽는 메일 클라이언트에서도
     내용은 보인다.
+  ※ 수신자가 여럿이어도 한 메일에 몰아서 to로 묶지 않고, 사람마다 따로 보낸다 —
+    서로의 주소가 노출되지 않고, 받는 사람 이름으로 인사말을 붙여 개인화된다.
 
 카카오톡/문자 발송 우선순위:
   1) PPURIO_ACCOUNT/API_SECRET/SENDER_PHONE이 있으면 뿌리오(비즈뿌리오)로 발송 — 개인 휴대폰
@@ -157,15 +159,16 @@ def _send_via_solapi(phones, message):
     return '알림톡' if use_kakao else 'SMS'
 
 
-def _build_notify_email_html(req, subject, message):
-    """알림 이메일을 텍스트 한 줄이 아니라 품목·상태·요청자·요청사항과 상세 페이지
-    바로가기 버튼이 있는 카드형 HTML로 만든다. req가 없으면(예외적인 경우) None을
-    반환해 텍스트 메일로만 보낸다."""
+def _build_notify_email_html(req, subject, message, recipient_name):
+    """알림 이메일을 텍스트 한 줄이 아니라 받는 사람 이름으로 인사말을 붙이고,
+    품목·상태·요청자·요청사항과 상세 페이지 바로가기 버튼이 있는 카드형 HTML로
+    만든다. req가 없으면(예외적인 경우) None을 반환해 텍스트 메일로만 보낸다."""
     if not req:
         return None
     site_url = settings.SITE_URL.rstrip('/')
     return render_to_string('emails/notify_email.html', {
         'subject': subject,
+        'recipient_name': recipient_name,
         'request_no': req.request_no,
         'product_code': req.product.code,
         'product_name': req.product.name,
@@ -177,10 +180,10 @@ def _build_notify_email_html(req, subject, message):
     })
 
 
-def _send_via_brevo(recipients, subject, message, html_body=None):
+def _send_via_brevo(to_email, to_name, subject, message, html_body=None):
     body = {
         'sender': {'email': settings.DEFAULT_FROM_EMAIL, 'name': '누보 포장지 발주관리 시스템'},
-        'to': [{'email': r} for r in recipients],
+        'to': [{'email': to_email, 'name': to_name}],
         'subject': subject,
         'textContent': message,
     }
@@ -199,39 +202,50 @@ def _send_via_brevo(recipients, subject, message, html_body=None):
     resp.raise_for_status()
 
 
-def _send_via_smtp(recipients, subject, message, html_body=None):
-    email = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, recipients)
+def _send_via_smtp(to_email, subject, message, html_body=None):
+    email = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, [to_email])
     if html_body:
         email.attach_alternative(html_body, 'text/html')
     email.send(fail_silently=False)
 
 
 def send_email_mock(users, subject, message, req=None):
-    recipients = [u.email for u in users if u.email]
+    """수신자마다 따로 발송한다 — 한 메일에 여러 명을 to로 묶으면 서로의 주소가
+    노출되고 메시지도 똑같아진다. 대신 받는 사람 이름으로 인사말을 붙여 개인화하고,
+    한 통씩 보낸다(보통 수신자가 1~2명이라 API 호출이 늘어도 부담 없음)."""
+    recipients = [u for u in users if u.email]
     if not recipients:
         return 'no_recipients', ''
 
-    html_body = _build_notify_email_html(req, subject, message)
+    if not settings.BREVO_API_KEY and not settings.EMAIL_HOST:
+        for u in recipients:
+            name = u.get_full_name() or u.username
+            logger.info('[MOCK EMAIL] to=%s(%s) subject=%s body=%s님, 안녕하세요.\n\n%s',
+                        u.username, u.email, subject, name, message)
+        return 'mock', ''
 
-    if settings.BREVO_API_KEY:
+    channel = 'Brevo' if settings.BREVO_API_KEY else 'SMTP'
+    sent, failed = [], []
+    for u in recipients:
+        name = u.get_full_name() or u.username
+        text_body = f'{name}님, 안녕하세요.\n\n{message}'
+        html_body = _build_notify_email_html(req, subject, message, name)
         try:
-            _send_via_brevo(recipients, subject, message, html_body)
-            logger.info('[EMAIL:BREVO] to=%s subject=%s', recipients, subject)
-            return 'sent', 'Brevo'
+            if settings.BREVO_API_KEY:
+                _send_via_brevo(u.email, name, subject, text_body, html_body)
+            else:
+                _send_via_smtp(u.email, subject, text_body, html_body)
+            sent.append(u.username)
         except Exception:
-            logger.exception('[EMAIL:BREVO] 발송 실패 — 로그로만 남김. to=%s subject=%s', recipients, subject)
-            return 'failed', 'Brevo'
-    elif settings.EMAIL_HOST:
-        try:
-            _send_via_smtp(recipients, subject, message, html_body)
-            logger.info('[EMAIL:SMTP] to=%s subject=%s', recipients, subject)
-            return 'sent', 'SMTP'
-        except Exception:
-            logger.exception('[EMAIL:SMTP] 발송 실패 — 로그로만 남김. to=%s subject=%s', recipients, subject)
-            return 'failed', 'SMTP'
+            logger.exception('[EMAIL:%s] 발송 실패 — 로그로만 남김. to=%s subject=%s', channel, u.email, subject)
+            failed.append(u.username)
 
-    logger.info('[MOCK EMAIL] to=%s subject=%s body=%s', recipients, subject, message)
-    return 'mock', ''
+    logger.info('[EMAIL:%s] sent=%s failed=%s subject=%s', channel, sent, failed, subject)
+    if not sent:
+        return 'failed', channel
+    if failed:
+        return 'sent', f'{channel} · {len(failed)}명 실패'
+    return 'sent', channel
 
 
 def send_kakao_mock(users, message):

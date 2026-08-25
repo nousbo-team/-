@@ -18,6 +18,9 @@
           </tr>
           <tr>
             <td style="padding:28px 24px 8px;">
+              {% if recipient_name %}
+              <p style="margin:0 0 14px;font-size:14px;color:#1e231f;">{{ recipient_name }}님, 안녕하세요.</p>
+              {% endif %}
               <div style="font-size:12px;color:#93713f;font-weight:700;letter-spacing:.03em;margin-bottom:8px;">
                 {{ request_no }} · 품목코드 {{ product_code }}{% if status_display %} · {{ status_display }}{% endif %}
               </div>
