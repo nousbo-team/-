@@ -167,9 +167,9 @@ def _build_notify_email_html(req, subject, message):
     return render_to_string('emails/notify_email.html', {
         'subject': subject,
         'request_no': req.request_no,
+        'product_code': req.product.code,
         'product_name': req.product.name,
         'status_display': req.get_status_display(),
-        'reason_display': req.get_reason_display(),
         'requester_name': req.requester.get_full_name() or req.requester.username,
         'detail': req.detail,
         'message': message,

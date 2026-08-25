@@ -19,7 +19,7 @@
           <tr>
             <td style="padding:28px 24px 8px;">
               <div style="font-size:12px;color:#93713f;font-weight:700;letter-spacing:.03em;margin-bottom:8px;">
-                {{ request_no }}{% if status_display %} · {{ status_display }}{% endif %}
+                {{ request_no }} · 품목코드 {{ product_code }}{% if status_display %} · {{ status_display }}{% endif %}
               </div>
               <h1 style="margin:0 0 14px;font-size:19px;line-height:1.4;color:#1e231f;">{{ product_name }}</h1>
               <p style="margin:0 0 20px;font-size:14.5px;line-height:1.7;color:#1e231f;">{{ message }}</p>
@@ -33,12 +33,6 @@
                   <td style="padding:10px 0;width:76px;vertical-align:top;">요청자</td>
                   <td style="padding:10px 0;color:#1e231f;font-weight:600;">{{ requester_name }}</td>
                 </tr>
-                {% if reason_display %}
-                <tr>
-                  <td style="padding:10px 0;vertical-align:top;">재발주 요청</td>
-                  <td style="padding:10px 0;color:#1e231f;">{{ reason_display }}</td>
-                </tr>
-                {% endif %}
                 {% if detail %}
                 <tr>
                   <td style="padding:10px 0;vertical-align:top;">요청사항</td>
