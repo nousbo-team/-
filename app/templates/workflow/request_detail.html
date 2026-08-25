@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ req.request_no }} · 누보 포장지 발주관리 시스템{% endblock %}
+{% block wrap_class %} wide{% endblock %}
 {% block content %}
 <div class="eyebrow">{{ req.request_no }} · 품목코드 {{ req.product.code }} · {{ req.product.get_category_display }} · {{ req.product.get_product_line_display }}</div>
 <h1>{{ req.product.name }}</h1>
@@ -113,45 +114,49 @@
   </div>
 
   <div class="request-detail-timeline">
-    <h2>이력 (타임라인)</h2>
-    <ul class="timeline">
-      {% for e in events %}
-      <li>
-        <div>
-          <strong>{{ e.get_action_display }}</strong>
-          {% if e.actor %}— {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}
-          {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
-        </div>
-        <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
+    <div class="timeline-panel">
+      <h2>이력 (타임라인)</h2>
+      <div class="timeline-scroll">
+        <ul class="timeline">
+          {% for e in events %}
+          <li>
+            <div>
+              <strong>{{ e.get_action_display }}</strong>
+              {% if e.actor %}— {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}
+              {% if e.channel != 'SYSTEM' %}<span class="channel-tag">[{{ e.get_channel_display }}]</span>{% endif %}
+            </div>
+            <div class="meta">{{ e.created_at|date:'Y-m-d H:i:s' }}</div>
 
-        {% if e.action == 'NOTIFY' %}
-          {% if e.notify_badges %}
-          <div class="notify-badges">
-            {% for b in e.notify_badges %}
-            <span class="notify-badge {% if b.ok %}ok{% else %}fail{% endif %}" title="{{ b.status_label }}">{{ b.label }} {% if b.ok %}●{% else %}X{% endif %}</span>
-            {% endfor %}
-          </div>
-          {% endif %}
-          {% if e.note %}
-          <details class="notify-detail">
-            <summary>상세 내용</summary>
-            <div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>
-          </details>
-          {% endif %}
-        {% else %}
-          {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
-        {% endif %}
+            {% if e.action == 'NOTIFY' %}
+              {% if e.notify_badges %}
+              <div class="notify-badges">
+                {% for b in e.notify_badges %}
+                <span class="notify-badge {% if b.ok %}ok{% else %}fail{% endif %}" title="{{ b.status_label }}">{{ b.label }} {% if b.ok %}●{% else %}X{% endif %}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+              {% if e.note %}
+              <details class="notify-detail">
+                <summary>상세 내용</summary>
+                <div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>
+              </details>
+              {% endif %}
+            {% else %}
+              {% if e.note %}<div style="font-size:13px;white-space:pre-line;">{{ e.note|linebreaksbr }}</div>{% endif %}
+            {% endif %}
 
-        {% if e.attachment %}
-        <div style="margin-top:4px;">
-          <a class="btn btn-ghost" href="{{ e.attachment.url }}" download="{{ e.attachment_filename }}" target="_blank" rel="noopener" style="padding:3px 9px;font-size:12px;">
-            📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
-          </a>
-        </div>
-        {% endif %}
-      </li>
-      {% endfor %}
-    </ul>
+            {% if e.attachment %}
+            <div style="margin-top:4px;">
+              <a class="btn btn-ghost" href="{{ e.attachment.url }}" download="{{ e.attachment_filename }}" target="_blank" rel="noopener" style="padding:3px 9px;font-size:12px;">
+                📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
+              </a>
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
