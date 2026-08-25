@@ -3,6 +3,10 @@
   1) settings.BREVO_API_KEY가 있으면 Brevo HTTPS API로 발송 (포트 차단 걱정 없음 — 추천)
   2) 없고 settings.EMAIL_HOST가 있으면 SMTP로 발송 (사내망 IP 제한 등으로 막힐 수 있음)
   3) 둘 다 없으면 콘솔/로그로만 남는 모의(mock) 발송
+  ※ send_email_mock에 req(ReorderRequest)를 넘기면 한 줄 텍스트 대신 품목·상태·요청자·
+    요청사항과 "요청 상세보기" 버튼이 있는 카드형 HTML 메일(emails/notify_email.html)로
+    보낸다 — 텍스트 버전도 항상 함께 실려서(멀티파트) HTML을 못 읽는 메일 클라이언트에서도
+    내용은 보인다.
 
 카카오톡/문자 발송 우선순위:
   1) PPURIO_ACCOUNT/API_SECRET/SENDER_PHONE이 있으면 뿌리오(비즈뿌리오)로 발송 — 개인 휴대폰
@@ -40,7 +44,8 @@ import base64
 import requests
 from django.conf import settings
 from django.core.cache import cache
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 
 logger = logging.getLogger('workflow.notify')
 
@@ -152,7 +157,35 @@ def _send_via_solapi(phones, message):
     return '알림톡' if use_kakao else 'SMS'
 
 
-def _send_via_brevo(recipients, subject, message):
+def _build_notify_email_html(req, subject, message):
+    """알림 이메일을 텍스트 한 줄이 아니라 품목·상태·요청자·요청사항과 상세 페이지
+    바로가기 버튼이 있는 카드형 HTML로 만든다. req가 없으면(예외적인 경우) None을
+    반환해 텍스트 메일로만 보낸다."""
+    if not req:
+        return None
+    site_url = settings.SITE_URL.rstrip('/')
+    return render_to_string('emails/notify_email.html', {
+        'subject': subject,
+        'request_no': req.request_no,
+        'product_name': req.product.name,
+        'status_display': req.get_status_display(),
+        'reason_display': req.get_reason_display(),
+        'requester_name': req.requester.get_full_name() or req.requester.username,
+        'detail': req.detail,
+        'message': message,
+        'url': f'{site_url}/requests/{req.pk}/',
+    })
+
+
+def _send_via_brevo(recipients, subject, message, html_body=None):
+    body = {
+        'sender': {'email': settings.DEFAULT_FROM_EMAIL, 'name': '누보 포장지 발주관리 시스템'},
+        'to': [{'email': r} for r in recipients],
+        'subject': subject,
+        'textContent': message,
+    }
+    if html_body:
+        body['htmlContent'] = html_body
     resp = requests.post(
         BREVO_ENDPOINT,
         headers={
@@ -160,25 +193,29 @@ def _send_via_brevo(recipients, subject, message):
             'api-key': settings.BREVO_API_KEY,
             'content-type': 'application/json',
         },
-        json={
-            'sender': {'email': settings.DEFAULT_FROM_EMAIL, 'name': '누보 포장지 발주관리 시스템'},
-            'to': [{'email': r} for r in recipients],
-            'subject': subject,
-            'textContent': message,
-        },
+        json=body,
         timeout=10,
     )
     resp.raise_for_status()
 
 
-def send_email_mock(users, subject, message):
+def _send_via_smtp(recipients, subject, message, html_body=None):
+    email = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, recipients)
+    if html_body:
+        email.attach_alternative(html_body, 'text/html')
+    email.send(fail_silently=False)
+
+
+def send_email_mock(users, subject, message, req=None):
     recipients = [u.email for u in users if u.email]
     if not recipients:
         return 'no_recipients', ''
 
+    html_body = _build_notify_email_html(req, subject, message)
+
     if settings.BREVO_API_KEY:
         try:
-            _send_via_brevo(recipients, subject, message)
+            _send_via_brevo(recipients, subject, message, html_body)
             logger.info('[EMAIL:BREVO] to=%s subject=%s', recipients, subject)
             return 'sent', 'Brevo'
         except Exception:
@@ -186,7 +223,7 @@ def send_email_mock(users, subject, message):
             return 'failed', 'Brevo'
     elif settings.EMAIL_HOST:
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipients, fail_silently=False)
+            _send_via_smtp(recipients, subject, message, html_body)
             logger.info('[EMAIL:SMTP] to=%s subject=%s', recipients, subject)
             return 'sent', 'SMTP'
         except Exception:

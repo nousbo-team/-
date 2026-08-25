@@ -89,7 +89,7 @@ def _notify(req, users, message, kakao=False):
 
     recipient_names = ', '.join(u.username for u in users) or '(대상 없음)'
     email_status, email_detail = send_email_mock(
-        users, f'[{req.request_no}] {req.product.name}', message)
+        users, f'[{req.request_no}] {req.product.name}', message, req=req)
 
     lines = [f'수신자: {recipient_names}', message, '']
     email_line = f'· 이메일: {_NOTIFY_STATUS_LABEL[email_status]}'

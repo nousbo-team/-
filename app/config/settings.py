@@ -205,6 +205,11 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@nousbo.com')
 
+# 알림 이메일 안의 "요청 상세보기" 버튼 링크에 쓰는 절대주소. SITE_URL을 직접 채우면
+# 그 값을 쓰고, 없으면 Render가 자동 주입하는 배포 도메인을 쓰고, 그것도 없으면
+# 로컬 개발 서버 주소로 대체한다.
+SITE_URL = os.environ.get('SITE_URL', '') or (f'https://{_render_host}' if _render_host else 'http://127.0.0.1:8000')
+
 # 카카오톡/문자 — 뿌리오(비즈뿌리오)에 전용 발신번호를 등록해두면 그쪽을 우선 사용한다.
 # 개인 휴대폰 번호를 발신번호로 쓰면 통신사 "번호도용문자차단서비스"에 걸려 API 호출은
 # 성공해도 실제 문자가 도착하지 않는 문제가 있어, 전용 회선으로 전환하며 도입했다.
