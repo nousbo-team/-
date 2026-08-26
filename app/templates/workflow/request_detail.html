@@ -19,10 +19,12 @@
     <div class="card">
       {% if req.current_file %}
       <div class="file-preview-row">
-        {% if req.current_file.jpg_file %}
+        {% if req.current_file.preview_image_url %}
         <a href="{{ req.current_file.jpg_file.url }}" target="_blank" rel="noopener" class="file-thumb">
-          <img src="{{ req.current_file.jpg_file.url }}" alt="{{ req.product.name }} v{{ req.current_file.version }} 미리보기">
+          <img src="{{ req.current_file.preview_image_url }}" alt="{{ req.product.name }} v{{ req.current_file.version }} 미리보기">
         </a>
+        {% elif req.current_file.is_pdf %}
+        <div class="file-thumb file-thumb-empty">PDF<br>미리보기 없음</div>
         {% else %}
         <div class="file-thumb file-thumb-empty">이미지 없음</div>
         {% endif %}
@@ -32,7 +34,7 @@
           {% else %}<span class="pill pill-review1">{{ req.current_file.get_status_display }}</span>{% endif %}
           <div class="actions-row">
             <a class="btn" href="{{ req.current_file.ai_file.url }}" download="{{ req.current_file.ai_display_filename }}" target="_blank" rel="noopener">AI 다운로드</a>
-            <a class="btn" href="{{ req.current_file.jpg_file.url }}" download="{{ req.current_file.jpg_display_filename }}" target="_blank" rel="noopener">JPG 다운로드</a>
+            <a class="btn" href="{{ req.current_file.jpg_file.url }}" download="{{ req.current_file.jpg_display_filename }}" target="_blank" rel="noopener">{% if req.current_file.is_pdf %}PDF{% else %}JPG{% endif %} 다운로드</a>
             <a class="btn btn-ghost" href="{% url 'catalog:product_detail' req.product.pk %}">전체 버전 이력 보기</a>
           </div>
         </div>
@@ -81,7 +83,10 @@
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="field"><label>AI 파일</label>{{ design_form.ai_file }}</div>
-        <div class="field"><label>JPG 파일</label>{{ design_form.jpg_file }}</div>
+        <div class="field">
+          <label>이미지/PDF 파일</label>{{ design_form.jpg_file }}
+          <div class="hint">JPG·PNG·GIF 등 이미지 또는 PDF를 올릴 수 있습니다. PDF는 첫 페이지로 미리보기가 자동 생성됩니다.</div>
+        </div>
         <div class="field"><label>수정 내용</label>{{ design_form.note }}</div>
         <button class="btn btn-primary" type="submit" name="action" value="design_upload">수정 파일 업로드</button>
       </form>

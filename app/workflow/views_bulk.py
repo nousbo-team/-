@@ -15,7 +15,8 @@ from django.utils import timezone
 
 from catalog.models import PackagingFile, Product
 
-PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg)$', re.IGNORECASE)
+PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg|_png|_gif|_pdf)$', re.IGNORECASE)
+VISUAL_EXTENSIONS = ('jpg', 'jpeg', 'png', 'gif', 'pdf')
 
 
 @login_required
@@ -147,9 +148,9 @@ def bulk_upload(request):
     registered, unmatched = [], []
     for base_key, pair in groups.items():
         ai_file = pair.get('ai')
-        jpg_file = pair.get('jpg') or pair.get('jpeg')
+        jpg_file = next((pair[ext] for ext in VISUAL_EXTENSIONS if ext in pair), None)
         if not ai_file or not jpg_file:
-            unmatched.append(f'{base_key} (AI/JPG 짝이 맞지 않음)')
+            unmatched.append(f'{base_key} (AI/이미지·PDF 짝이 맞지 않음)')
             continue
 
         map_row = mapping.get(base_key)

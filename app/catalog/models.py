@@ -1,10 +1,14 @@
+import io
 import re
 import uuid
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import models
 from django.utils import timezone
+from PIL import Image
 
 # 다운로드 파일명에 그대로 못 쓰는 문자(Windows 기준 예약 문자) — 저장 키가 아니라
 # 화면에 보여주고 실제로 저장될 파일명을 만들 때 공통으로 쓰는 치환 규칙이다.
@@ -15,6 +19,38 @@ def sanitize_filename_part(text):
     """다운로드 파일명 한 조각을 OS에서 안전하게 쓸 수 있도록 정리한다."""
     cleaned = _ILLEGAL_FILENAME_CHARS.sub('_', text).strip()
     return cleaned or 'file'
+
+
+def _is_pdf_name(name):
+    return (name or '').lower().endswith('.pdf')
+
+
+def validate_visual_file(f):
+    """jpg_file은 이미지(JPG/PNG/GIF 등 Pillow가 열 수 있는 모든 형식) 또는 PDF를
+    받는다 — 필드명은 관례상 유지하지만 실제로는 인쇄용 미리보기 파일 하나를 받는
+    자리다. 이미지도 PDF도 아니면 거부한다."""
+    if _is_pdf_name(getattr(f, 'name', '')):
+        try:
+            import pymupdf
+            f.seek(0)
+            with pymupdf.open(stream=f.read(), filetype='pdf') as doc:
+                if doc.page_count < 1:
+                    raise ValidationError('PDF에 페이지가 없습니다.')
+        except ValidationError:
+            raise
+        except Exception:
+            raise ValidationError('올바른 PDF 파일을 업로드하세요.')
+        finally:
+            f.seek(0)
+        return
+
+    try:
+        f.seek(0)
+        Image.open(f).verify()
+    except Exception:
+        raise ValidationError('올바른 이미지(JPG/PNG/GIF 등) 또는 PDF 파일을 업로드하세요.')
+    finally:
+        f.seek(0)
 
 
 def packaging_upload_to(instance, filename):
@@ -74,7 +110,11 @@ class PackagingFile(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='files')
     version = models.PositiveIntegerField(editable=False)
     ai_file = models.FileField(upload_to=packaging_upload_to)
-    jpg_file = models.ImageField(upload_to=packaging_upload_to)
+    jpg_file = models.FileField(upload_to=packaging_upload_to, validators=[validate_visual_file])
+    # PDF를 올린 경우에만 채워진다 — 브라우저가 PDF를 <img>로 못 그리므로 첫 페이지를
+    # 이미지로 미리 렌더링해 저장해둔다. 이미지(JPG/PNG 등)를 올렸으면 jpg_file 자체가
+    # 이미 미리보기로 쓸 수 있어 비워둔다.
+    jpg_thumbnail = models.ImageField(upload_to=packaging_upload_to, null=True, blank=True, editable=False)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     note = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(
@@ -99,10 +139,29 @@ class PackagingFile(models.Model):
         return f'{self.product.name} v{self.version} ({self.get_status_display()})'
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         if self.version is None:
             last = PackagingFile.objects.filter(product=self.product).order_by('-version').first()
             self.version = (last.version + 1) if last else 1
         super().save(*args, **kwargs)
+        if is_new and self.jpg_file and _is_pdf_name(self.jpg_file.name) and not self.jpg_thumbnail:
+            self._generate_pdf_thumbnail()
+
+    def _generate_pdf_thumbnail(self):
+        """PDF 첫 페이지를 PNG로 렌더링해 jpg_thumbnail에 저장한다. 실패해도(손상된
+        PDF 등) 원본 업로드 자체는 그대로 유지하고 미리보기만 없는 채로 넘어간다."""
+        import pymupdf
+        try:
+            self.jpg_file.open('rb')
+            data = self.jpg_file.read()
+            with pymupdf.open(stream=data, filetype='pdf') as doc:
+                pix = doc.load_page(0).get_pixmap(matrix=pymupdf.Matrix(2, 2))
+            self.jpg_thumbnail.save(
+                f'{uuid.uuid4().hex}.png', ContentFile(pix.tobytes('png')), save=True)
+        except Exception:
+            pass
+        finally:
+            self.jpg_file.close()
 
     def approve(self, by_user):
         """최종 승인 처리 — 잠금 + 이전 승인본은 자동으로 이력(SUPERSEDED)으로 전환."""
@@ -119,6 +178,18 @@ class PackagingFile(models.Model):
 
     def is_locked(self):
         return self.status == PackagingFile.Status.FINAL_APPROVED
+
+    @property
+    def is_pdf(self):
+        return bool(self.jpg_file) and _is_pdf_name(self.jpg_file.name)
+
+    @property
+    def preview_image_url(self):
+        """화면에 <img>로 바로 그릴 수 있는 미리보기 URL. PDF면 렌더링해둔 썸네일,
+        이미지면 원본 그대로. 썸네일 생성이 실패한 PDF는 None(미리보기 없음)."""
+        if self.is_pdf:
+            return self.jpg_thumbnail.url if self.jpg_thumbnail else None
+        return self.jpg_file.url if self.jpg_file else None
 
     def _display_filename(self, field_file):
         if not field_file:

@@ -1,6 +1,6 @@
 from django import forms
 
-from catalog.models import Product
+from catalog.models import Product, validate_visual_file
 
 from .models import ReorderRequest
 
@@ -20,7 +20,10 @@ class NewRequestForm(forms.Form):
 
 class DesignUploadForm(forms.Form):
     ai_file = forms.FileField(label='AI 파일')
-    jpg_file = forms.ImageField(label='JPG 파일')
+    jpg_file = forms.FileField(
+        label='이미지/PDF 파일', validators=[validate_visual_file],
+        widget=forms.ClearableFileInput(attrs={'accept': 'image/*,.pdf'}),
+        help_text='JPG·PNG·GIF 등 이미지 또는 PDF를 올릴 수 있습니다. PDF는 첫 페이지로 미리보기가 자동 생성됩니다.')
     note = forms.CharField(label='수정 내용', required=False, widget=forms.Textarea)
 
 
