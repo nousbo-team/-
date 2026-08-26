@@ -8,22 +8,151 @@
 
 <h2>일괄 업로드 (이력 포함)</h2>
 <div class="card">
-  <form method="post" action="{% url 'workflow:bulk_upload' %}" enctype="multipart/form-data">
+  <form method="post" action="{% url 'workflow:bulk_upload' %}" enctype="multipart/form-data" id="bulk-upload-form">
     {% csrf_token %}
     <div class="field">
-      <label>엑셀 매핑표 (선택, 품목코드 기준 upsert)</label>
-      <input type="file" name="mapping_file" accept=".xlsx">
-      <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 매핑표가 없으면 파일명으로 기존 품목명을 자동 매칭합니다(신규 품목 생성 불가).
-        <a href="{% url 'workflow:bulk_mapping_template' %}">빈 매핑표 양식 다운로드</a>
-      </div>
-    </div>
-    <div class="field">
       <label>업로드할 파일들 (AI + 이미지/PDF 쌍, 예: 품목명_v2.ai / 품목명_v2.jpg 또는 .png·.gif·.pdf)</label>
-      <input type="file" name="files" multiple required>
+      <input type="file" name="files" id="bulk-files-input" multiple required>
+      <div class="hint">파일을 고르면 AI/이미지 쌍끼리 자동으로 묶어 아래에 보여줍니다 — 묶음마다 연결할 품목을 바로 선택하세요.</div>
     </div>
-    <button class="btn btn-primary" type="submit">일괄 업로드</button>
+
+    <div id="bulk-groups" style="margin-top:14px;"></div>
+
+    <details style="margin-top:14px;">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft);">엑셀 매핑표로 대신 지정하기 (대량 이관 시 편리, 선택)</summary>
+      <div class="field" style="margin-top:10px;">
+        <label>엑셀 매핑표</label>
+        <input type="file" name="mapping_file" accept=".xlsx">
+        <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 이 파일이 있고 위에서 품목을 직접 고르지 않은 묶음은 이 매핑표(또는 파일명 자동 매칭)로 처리됩니다.
+          <a href="{% url 'workflow:bulk_mapping_template' %}">빈 매핑표 양식 다운로드</a>
+        </div>
+      </div>
+    </details>
+
+    <input type="hidden" name="mapping_json" id="bulk-mapping-json">
+    <button class="btn btn-primary" type="submit" style="margin-top:14px;">일괄 업로드</button>
   </form>
 </div>
+
+{{ all_products|json_script:"bulk-all-products" }}
+<script>
+(function(){
+  var PAIR_SUFFIX_RE = /(_ai|_jpg|_jpeg|_png|_gif|_pdf)$/i;
+  var VISUAL_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
+  var allProducts = JSON.parse(document.getElementById('bulk-all-products').textContent);
+
+  var filesInput = document.getElementById('bulk-files-input');
+  var groupsEl = document.getElementById('bulk-groups');
+  var form = document.getElementById('bulk-upload-form');
+  var mappingInput = document.getElementById('bulk-mapping-json');
+  if (!filesInput || !groupsEl || !form) return;
+
+  function baseKey(filename) {
+    var idx = filename.lastIndexOf('.');
+    var stem = idx >= 0 ? filename.slice(0, idx) : filename;
+    return stem.replace(PAIR_SUFFIX_RE, '');
+  }
+  function ext(filename) {
+    var idx = filename.lastIndexOf('.');
+    return idx >= 0 ? filename.slice(idx + 1).toLowerCase() : '';
+  }
+  function fieldStyle(extra) {
+    return 'padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;' + (extra || '');
+  }
+
+  function renderGroups() {
+    groupsEl.innerHTML = '';
+    var groups = {};
+    Array.prototype.slice.call(filesInput.files).forEach(function (f) {
+      var key = baseKey(f.name);
+      groups[key] = groups[key] || {};
+      groups[key][ext(f.name)] = f;
+    });
+
+    Object.keys(groups).forEach(function (key, idx) {
+      var pair = groups[key];
+      var hasAi = !!pair['ai'];
+      var visualExt = VISUAL_EXTS.filter(function (e) { return pair[e]; })[0];
+
+      var row = document.createElement('div');
+      row.className = 'card';
+      row.style.cssText = 'margin-bottom:10px;padding:12px 14px;background:var(--paper);';
+      row.dataset.groupKey = key;
+
+      if (!hasAi || !visualExt) {
+        var have = Object.keys(pair).map(function (e) { return '.' + e; }).join(', ') || '없음';
+        row.innerHTML =
+          '<div style="font-weight:600;font-size:13.5px;">' + key + '</div>' +
+          '<div class="hint" style="color:var(--danger);margin-top:2px;">AI/이미지·PDF 짝이 맞지 않아 이 묶음은 제외됩니다 (있는 파일: ' + have + ')</div>';
+        groupsEl.appendChild(row);
+        return;
+      }
+
+      var selectId = 'bulk-product-' + idx;
+      var filterId = 'bulk-filter-' + idx;
+      row.innerHTML =
+        '<div style="font-weight:600;font-size:13.5px;margin-bottom:8px;">' + key +
+        ' <span style="color:var(--ink-soft);font-weight:400;">(AI + ' + visualExt.toUpperCase() + ')</span></div>' +
+        '<div style="margin-bottom:8px;">' +
+        '<input type="text" id="' + filterId + '" placeholder="품목명 또는 품목코드로 검색" autocomplete="off" style="' + fieldStyle('width:100%;margin-bottom:6px;') + '">' +
+        '<select id="' + selectId + '" class="bulk-product-select" style="' + fieldStyle('width:100%;') + '" required>' +
+        '<option value="">품목을 선택하세요</option>' +
+        '</select>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<input type="text" class="bulk-approver" placeholder="승인자(선택)" style="' + fieldStyle('flex:1;min-width:100px;') + '">' +
+        '<input type="date" class="bulk-approved-date" style="' + fieldStyle('flex:1;min-width:130px;') + '">' +
+        '<input type="text" class="bulk-note" placeholder="비고(선택)" style="' + fieldStyle('flex:2;min-width:140px;') + '">' +
+        '</div>';
+      groupsEl.appendChild(row);
+
+      var select = row.querySelector('#' + selectId);
+      allProducts.forEach(function (p) {
+        var opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = '[' + p.code + '] ' + p.name;
+        select.appendChild(opt);
+      });
+      // 파일명으로 후보를 추정해 미리 선택해둔다(완전일치 우선) — 틀리면 그냥 다시 고르면 됨.
+      var guess = allProducts.filter(function (p) { return p.name === key; })[0] ||
+        allProducts.filter(function (p) { return key.indexOf(p.name) !== -1 || p.name.indexOf(key) !== -1; })[0];
+      if (guess) select.value = guess.id;
+
+      var filterInput = row.querySelector('#' + filterId);
+      var options = Array.prototype.slice.call(select.options).filter(function (o) { return o.value; });
+      filterInput.addEventListener('input', function () {
+        var q = filterInput.value.trim().toLowerCase();
+        options.forEach(function (o) { o.hidden = !(!q || o.textContent.toLowerCase().indexOf(q) !== -1); });
+      });
+    });
+  }
+
+  filesInput.addEventListener('change', renderGroups);
+
+  form.addEventListener('submit', function (e) {
+    var mapping = {};
+    var missing = [];
+    Array.prototype.slice.call(groupsEl.querySelectorAll('[data-group-key]')).forEach(function (row) {
+      var select = row.querySelector('.bulk-product-select');
+      if (!select) return; // 짝이 안 맞아 제외된 묶음
+      var key = row.dataset.groupKey;
+      if (!select.value) { missing.push(key); return; }
+      mapping[key] = {
+        product_id: select.value,
+        approver: row.querySelector('.bulk-approver').value.trim(),
+        approved_date: row.querySelector('.bulk-approved-date').value,
+        note: row.querySelector('.bulk-note').value.trim(),
+      };
+    });
+    if (missing.length) {
+      e.preventDefault();
+      alert('다음 파일 묶음에 품목을 선택해주세요:\n' + missing.join('\n'));
+      return;
+    }
+    mappingInput.value = JSON.stringify(mapping);
+  });
+})();
+</script>
 
 <h2>일괄 다운로드 (최종 승인본 + 이력)</h2>
 

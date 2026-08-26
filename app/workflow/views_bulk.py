@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import re
 import zipfile
 from datetime import datetime
@@ -45,7 +46,16 @@ def bulk_home(request):
         final_file_by_product.setdefault(f.product_id, f)  # 품목별로 최신 버전 하나만 남김
 
     rows = [{'product': p, 'final_file': final_file_by_product.get(p.pk)} for p in page_obj]
-    return render(request, 'workflow/bulk.html', {'rows': rows, 'page_obj': page_obj, 'q': q})
+
+    # 일괄 업로드 화면에서 파일 묶음마다 품목을 직접 골라 연결할 수 있도록, 검색/
+    # 페이지네이션과 무관하게 활성 품목 전체를 가벼운 목록(id/code/name)으로 넘긴다 —
+    # 258건 수준이면 페이지 하나에 실어도 부담 없다(현재 파일 목록과는 별개).
+    all_products = list(
+        Product.objects.filter(is_active=True).order_by('name').values('id', 'code', 'name'))
+
+    return render(request, 'workflow/bulk.html', {
+        'rows': rows, 'page_obj': page_obj, 'q': q, 'all_products': all_products,
+    })
 
 
 @login_required
@@ -103,9 +113,13 @@ def _read_mapping(mapping_file):
     return mapping
 
 
-def _resolve_product(base_key, map_row):
-    """품목코드가 있으면 코드 기준으로 upsert(품목명 변경도 최신으로 갱신), 없으면
-    기존 품목명으로만 매칭한다(매핑표 없이는 신규 품목을 만들지 않는다)."""
+def _resolve_product(base_key, map_row, product_id=None):
+    """화면에서 직접 품목을 골랐으면(product_id) 그걸로 확정 — 엑셀 매핑표나 파일명
+    추정은 아예 건너뛴다. product_id가 없을 때만 기존 방식(품목코드 upsert 또는
+    품목명 매칭)으로 넘어간다."""
+    if product_id:
+        return Product.objects.filter(pk=product_id).first()
+
     item_code = map_row.get('item_code') if map_row else ''
     product_name = (map_row.get('product_name') if map_row else '') or base_key
 
@@ -137,7 +151,17 @@ def bulk_upload(request):
 
     files = request.FILES.getlist('files')
     mapping_file = request.FILES.get('mapping_file')
-    mapping = _read_mapping(mapping_file) if mapping_file else {}
+    excel_mapping = _read_mapping(mapping_file) if mapping_file else {}
+
+    # 화면에서 파일 묶음별로 직접 고른 품목/승인 정보 — bulk.html의 JS가 파일을
+    # 고르는 즉시 같은 규칙(PAIR_SUFFIX_RE)으로 그룹을 만들어 미리 보여주고, 제출
+    # 시점에 이 JSON 하나로 실어 보낸다. 매번 엑셀 매핑표를 새로 만들 필요 없이
+    # 화면에서 바로 연결할 수 있게 하기 위함 — 엑셀 매핑표는 대량 이관 등에서
+    # 여전히 쓸 수 있도록 남겨두되, 화면 선택이 있으면 그쪽을 우선한다.
+    try:
+        ui_mapping = json.loads(request.POST.get('mapping_json') or '{}')
+    except ValueError:
+        ui_mapping = {}
 
     groups = {}
     for f in files:
@@ -153,10 +177,19 @@ def bulk_upload(request):
             unmatched.append(f'{base_key} (AI/이미지·PDF 짝이 맞지 않음)')
             continue
 
-        map_row = mapping.get(base_key)
-        product = _resolve_product(base_key, map_row)
+        ui_row = ui_mapping.get(base_key)
+        if ui_row and ui_row.get('product_id'):
+            map_row = {
+                'note': ui_row.get('note', ''),
+                'approver': ui_row.get('approver', ''),
+                'approved_date': ui_row.get('approved_date') or None,
+            }
+            product = _resolve_product(base_key, map_row, product_id=ui_row['product_id'])
+        else:
+            map_row = excel_mapping.get(base_key)
+            product = _resolve_product(base_key, map_row)
         if not product:
-            unmatched.append(f'{base_key} (품목 미매칭 — 엑셀 매핑표에 품목코드·품목명을 지정하거나 /admin에서 수동 등록하세요)')
+            unmatched.append(f'{base_key} (품목 미매칭 — 화면에서 품목을 선택하거나 엑셀 매핑표에 품목코드·품목명을 지정하세요)')
             continue
 
         pkg = PackagingFile.objects.create(
