@@ -35,9 +35,10 @@ class ReorderRequest(models.Model):
     TERMINAL_STATUSES = {Status.COMPLETED, Status.CANCELLED}
 
     class Reason(models.TextChoices):
-        STOCK_SHORTAGE = 'STOCK_SHORTAGE', '재고 소진(임박)'
-        NEEDS_REVISION = 'NEEDS_REVISION', '표시사항 등 수정 필요'
-        BULK_UPLOAD = 'BULK_UPLOAD', '파일관리요청'
+        # 셀렉트 목록 노출 순서 — 자주 쓰는 사유가 위로, "그 외 기타"는 맨 아래로.
+        NEEDS_REVISION = 'NEEDS_REVISION', '디자인 수정 요청'
+        BULK_UPLOAD = 'BULK_UPLOAD', '파일 확인 요청'
+        STOCK_SHORTAGE = 'STOCK_SHORTAGE', '그 외 기타'
 
     request_no = models.CharField(max_length=20, unique=True, editable=False,
                                    help_text='자동 채번되는 요청번호 (예: RQ-20260722-001)')
