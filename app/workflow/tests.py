@@ -384,16 +384,26 @@ class AssistantTestCase(TestCase):
         self.assertEqual(resp.status_code, 400)
 
     def test_stream_view_emits_sse_chunks_from_mocked_gemini(self):
-        """스트리밍 경로 — Gemini의 SSE 조각들이 그대로 화면용 이벤트로 흘러가는지."""
+        """스트리밍 경로 — Gemini의 SSE 조각들이 그대로 화면용 이벤트로 흘러가는지.
+
+        iter_lines는 실제 requests처럼 bytes를 돌려준다 — 예전엔 이 가짜가 이미 디코드된
+        str을 주는 바람에, requests가 text/event-stream을 ISO-8859-1로 잘못 디코드해
+        한글이 깨지던 버그를 테스트가 잡지 못했다."""
         def _sse(text):
             body = {'candidates': [{'content': {'parts': [{'text': text}]}}]}
-            return 'data: ' + json.dumps(body, ensure_ascii=False)
+            return ('data: ' + json.dumps(body, ensure_ascii=False)).encode('utf-8')
 
         class _FakeStreamResponse:
             status_code = 200
 
             def iter_lines(self, decode_unicode=False):
-                return iter([_sse('안녕하'), '', _sse('세요.')])
+                lines = [_sse('안녕하'), b'', _sse('세요.')]
+                if decode_unicode:
+                    # requests는 charset 없는 text/* 응답을 ISO-8859-1로 가정한다 —
+                    # 실제로 한글이 깨지던 그 동작을 그대로 흉내 내, 이 경로로 돌아가면
+                    # 테스트가 깨진 글자를 보고 실패하게 만든다.
+                    return iter([b.decode('iso-8859-1') for b in lines])
+                return iter(lines)
 
             def close(self):
                 pass
@@ -444,7 +454,7 @@ class AssistantTestCase(TestCase):
 
             def iter_lines(self, decode_unicode=False):
                 body = {'candidates': [{'content': {'parts': [{'text': '재시도 성공'}]}}]}
-                return iter(['data: ' + json.dumps(body, ensure_ascii=False)])
+                return iter([('data: ' + json.dumps(body, ensure_ascii=False)).encode('utf-8')])
 
             def close(self):
                 pass

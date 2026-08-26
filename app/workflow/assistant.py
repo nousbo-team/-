@@ -208,8 +208,17 @@ def ask_stream(user, question, history=None):
 
     sent_any = False
     try:
-        for raw in resp.iter_lines(decode_unicode=True):
-            if not raw or not raw.startswith('data:'):
+        # decode_unicode=True를 쓰면 안 된다 — requests는 charset이 안 붙은 text/* 응답의
+        # 인코딩을 ISO-8859-1로 가정하는데(RFC 2616 옛 규칙), Gemini의 SSE 응답이 바로
+        # 그런 경우(text/event-stream)라 한글이 전부 "ì븞ë뀞..." 식으로 깨진다.
+        # UTF-8은 개행 바이트가 멀티바이트 문자 안에 들어갈 수 없으므로, 줄 단위로 끊긴
+        # 바이트를 직접 UTF-8로 디코드하면 글자가 잘릴 걱정 없이 안전하다.
+        for raw in resp.iter_lines(decode_unicode=False):
+            if not raw:
+                continue
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8', errors='replace')
+            if not raw.startswith('data:'):
                 continue
             chunk = raw[len('data:'):].strip()
             if not chunk or chunk == '[DONE]':
