@@ -6,9 +6,9 @@
 <h1>대시보드</h1>
 
 {% if role == 'REQUESTER' %}
-<p class="subtitle">내가 등록한 재발주 요청 중 <strong>진행중인 건</strong>만 표시합니다. 완료·취소된 건은 <a href="{% url 'workflow:history' %}">이력 페이지</a>에서 검색할 수 있습니다.</p>
+<p class="subtitle">내가 등록한 발주요청 중 <strong>진행중인 건</strong>만 표시합니다. 완료·취소된 건은 <a href="{% url 'workflow:history' %}">이력 페이지</a>에서 검색할 수 있습니다.</p>
 <div class="actions-row" style="margin-bottom:16px;">
-  <a class="btn btn-primary" href="{% url 'workflow:new_request' %}">+ 재발주 요청 등록</a>
+  <a class="btn btn-primary" href="{% url 'workflow:new_request' %}">+ 발주요청 등록</a>
   <a class="btn btn-ghost" href="{% url 'workflow:history' %}">완료·취소 이력 보기</a>
 </div>
 <div class="card table-wrap">
@@ -99,7 +99,7 @@
 
 {% if all_active is not None %}
 <h2 style="margin-top:32px;">전체 진행중 현황</h2>
-<p class="subtitle">지금 내가 처리할 건이 없어도, 회사 전체 재발주 건이 어느 단계에 있는지 항상 확인할 수 있습니다.</p>
+<p class="subtitle">지금 내가 처리할 건이 없어도, 회사 전체 발주 건이 어느 단계에 있는지 항상 확인할 수 있습니다.</p>
 <div class="card table-wrap">
   {% if all_active %}
   <table>
@@ -118,7 +118,7 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state">진행중인 재발주 건이 없습니다.</div>
+  <div class="empty-state">진행중인 발주 건이 없습니다.</div>
   {% endif %}
 </div>
 {% endif %}

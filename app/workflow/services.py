@@ -130,7 +130,7 @@ def _notify_history(req, message, kakao=False):
 
 
 def create_request(product, requester, reason, detail=''):
-    """재발주 요청 등록(P0-3). 동일 제품에 진행중인 건이 있으면 (None, 기존건)을 반환."""
+    """발주요청 등록(P0-3). 동일 제품에 진행중인 건이 있으면 (None, 기존건)을 반환."""
     existing = product.has_open_request()
     if existing:
         return None, existing
@@ -142,20 +142,20 @@ def create_request(product, requester, reason, detail=''):
             status=ReorderRequest.Status.REVIEW1,
             current_file=product.current_final_file(),
         )
-        note = f'재발주 요청 등록 ({req.get_reason_display()}) · 최종본 확인 요청'
+        note = f'발주요청 등록 ({req.get_reason_display()}) · 최종본 확인 요청'
         if detail.strip():
             note += f'\n요청사항: {detail.strip()}'
         _log(req, requester, RequestEvent.Action.SUBMITTED, note=note)
         _notify(req, effective_reviewers(),
-                f'"{product.name}" 재발주 요청이 등록되었습니다. 최종본 확인이 필요합니다.', kakao=True)
+                f'"{product.name}" 발주요청이 등록되었습니다. 최종본 확인이 필요합니다.', kakao=True)
     return req, None
 
 
 def create_bulk_upload_request(product, actor, packaging_file, reason_detail):
-    """일괄 업로드(/bulk/)는 정상 재발주 승인 절차를 거치지 않고 파일을 바로
-    등록·교체한다 — 특정 재발주 건과 연결되지 않아, 이대로면 "완료·취소 이력"에도
+    """일괄 업로드(/bulk/)는 정상 발주 승인 절차를 거치지 않고 파일을 바로
+    등록·교체한다 — 특정 발주 건과 연결되지 않아, 이대로면 "완료·취소 이력"에도
     안 잡히고 요청번호도 없어 나중에 이 버전이 왜 생겼는지 추적할 수 없다. 그래서
-    일괄 업로드 한 건마다 완료 상태의 재발주 건을 하나씩 만들어 요청번호를 채번하고,
+    일괄 업로드 한 건마다 완료 상태의 발주 건을 하나씩 만들어 요청번호를 채번하고,
     이력(타임라인)에 사유를 남긴다 — 검토 절차 없이 강제로 갱신됐다는 사실이 그대로
     드러나도록 사유(reason_detail)는 필수로 받는다."""
     with transaction.atomic():
@@ -193,7 +193,7 @@ def review_decision(req, actor, decision, note='', use_exception=False, attachme
                 req.save(update_fields=['status', 'used_exception', 'updated_at'])
                 _log(req, actor, RequestEvent.Action.EXCEPTION_SKIP,
                      note='최근 3개월 이내 승인 이력이 있어 최종검수를 생략하고 완료 처리')
-                _notify(req, [req.requester], f'"{req.product.name}" 재발주 건이 완료되었습니다(최종검수 생략).',
+                _notify(req, [req.requester], f'"{req.product.name}" 발주 건이 완료되었습니다(최종검수 생략).',
                         kakao=True)
             else:
                 req.status = ReorderRequest.Status.FINAL_REVIEW
@@ -282,7 +282,7 @@ def cancel_request(req, actor, reason):
         req.status = ReorderRequest.Status.CANCELLED
         req.save(update_fields=['status', 'updated_at'])
         _log(req, actor, RequestEvent.Action.CANCELLED, note=reason)
-        _notify_history(req, f'"{req.product.name}" 재발주 건이 취소되었습니다. 사유: {reason}', kakao=True)
+        _notify_history(req, f'"{req.product.name}" 발주 건이 취소되었습니다. 사유: {reason}', kakao=True)
     return req
 
 

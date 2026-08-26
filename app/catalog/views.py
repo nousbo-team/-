@@ -37,7 +37,7 @@ def download_packaging_file(request, pk, field):
 def product_list(request):
     """품목 하나마다 current_final_file()/has_open_request() 등을 호출하면 품목 수만큼
     쿼리가 늘어난다 — 품목이 수백 건 규모가 되면 요청 하나가 원격 DB 왕복을 수백 번
-    반복하게 되어 워커 타임아웃(502/500)으로 이어진다. 파일·재발주 건을 각각 한 번씩만
+    반복하게 되어 워커 타임아웃(502/500)으로 이어진다. 파일·발주 건을 각각 한 번씩만
     조회해 품목별로 파이썬에서 묶는다."""
     q = request.GET.get('q', '').strip()
     products = Product.objects.filter(is_active=True)
@@ -72,7 +72,7 @@ def product_list(request):
 
 @login_required
 def product_detail(request, pk):
-    # 목록/검색에서는 숨기지만, 기존 재발주 건 등에서 직접 들어오는 링크는 막지 않는다.
+    # 목록/검색에서는 숨기지만, 기존 발주 건 등에서 직접 들어오는 링크는 막지 않는다.
     product = get_object_or_404(Product, pk=pk)
     files = product.files.filter(is_active=True).order_by('-version')
     return render(request, 'catalog/product_detail.html', {

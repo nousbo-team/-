@@ -123,9 +123,9 @@ class PackagingFile(models.Model):
     note = models.CharField(max_length=255, blank=True)
     is_bulk_upload = models.BooleanField(
         default=False,
-        help_text='일괄 업로드(/bulk/)로 등록된 버전인지 — 특정 재발주 건과 연결되지 '
-                   '않아 그 건의 이력(타임라인)에는 안 남으므로, 왜 버전이 바뀌었는지 '
-                   '따로 확인할 수 있도록 "일괄 업로드 이력" 목록에서 구분해 보여준다.',
+        help_text='일괄 업로드(/bulk/)로 등록된 버전인지 — 정상 검토 절차 없이 등록된 '
+                   '버전이라, 왜 바뀌었는지 따로 확인할 수 있도록 "일괄 업로드 이력" '
+                   '목록에서 구분해 보여준다.',
     )
     is_active = models.BooleanField(
         default=True, verbose_name='표시 여부',

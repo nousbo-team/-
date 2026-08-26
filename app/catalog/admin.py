@@ -20,7 +20,7 @@ def unhide_selected(modeladmin, request, queryset):
 @admin.action(description='⚠ 완전 삭제 (복구 불가 — 관리자 전용)')
 def hard_delete_products(modeladmin, request, queryset):
     """품목과 그에 딸린 파일(버전 이력 포함, 저장소의 실제 파일까지)을 영구 삭제한다.
-    재발주 이력이 하나라도 남아있는 품목은 PROTECT 제약으로 삭제가 막히며, 그 목록을
+    발주 이력이 하나라도 남아있는 품목은 PROTECT 제약으로 삭제가 막히며, 그 목록을
     사용자에게 알려준다(먼저 해당 이력을 정리해야 함)."""
     if not request.user.is_superuser:
         modeladmin.message_user(request, '이 작업은 관리자 계정만 실행할 수 있습니다.', level='ERROR')
@@ -39,13 +39,13 @@ def hard_delete_products(modeladmin, request, queryset):
                 product.delete()
                 deleted.append(label)
         except ProtectedError:
-            blocked.append(f'{product.code} {product.name} (연결된 재발주 건이 있어 삭제 불가)')
+            blocked.append(f'{product.code} {product.name} (연결된 발주 건이 있어 삭제 불가)')
 
     if deleted:
         modeladmin.message_user(request, f'완전 삭제됨: {", ".join(deleted)}')
     if blocked:
         modeladmin.message_user(
-            request, f'삭제되지 않음(재발주 이력 존재): {", ".join(blocked)}', level='WARNING')
+            request, f'삭제되지 않음(발주 이력 존재): {", ".join(blocked)}', level='WARNING')
 
 
 @admin.action(description='⚠ 완전 삭제 (복구 불가 — 관리자 전용)')

@@ -37,7 +37,7 @@ class ReorderRequest(models.Model):
     class Reason(models.TextChoices):
         STOCK_SHORTAGE = 'STOCK_SHORTAGE', '재고 소진(임박)'
         NEEDS_REVISION = 'NEEDS_REVISION', '표시사항 등 수정 필요'
-        BULK_UPLOAD = 'BULK_UPLOAD', '일괄 업로드'
+        BULK_UPLOAD = 'BULK_UPLOAD', '파일관리요청'
 
     request_no = models.CharField(max_length=20, unique=True, editable=False,
                                    help_text='자동 채번되는 요청번호 (예: RQ-20260722-001)')
@@ -53,8 +53,8 @@ class ReorderRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = '재발주 건'
-        verbose_name_plural = '재발주 건'
+        verbose_name = '발주 건'
+        verbose_name_plural = '발주 건'
 
     def __str__(self):
         return f'{self.request_no} {self.product.name} ({self.get_status_display()})'

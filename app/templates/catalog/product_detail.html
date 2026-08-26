@@ -5,9 +5,9 @@
 <div class="eyebrow">품목코드 {{ product.code }} · {{ product.get_category_display }} · {{ product.get_product_line_display }}</div>
 <h1>{{ product.name }}{% if not product.is_active %} <span class="pill pill-submitted">숨김 처리됨</span>{% endif %}</h1>
 {% if open_request %}
-<p class="subtitle">진행중인 재발주 건이 있습니다 — <a href="{% url 'workflow:request_detail' open_request.pk %}">{{ open_request.request_no }} 보기</a></p>
+<p class="subtitle">진행중인 발주 건이 있습니다 — <a href="{% url 'workflow:request_detail' open_request.pk %}">{{ open_request.request_no }} 보기</a></p>
 {% else %}
-<p class="subtitle">진행중인 재발주 건이 없습니다.</p>
+<p class="subtitle">진행중인 발주 건이 없습니다.</p>
 {% endif %}
 
 <h2>버전 이력 (시간순)</h2>

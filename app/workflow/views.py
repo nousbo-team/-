@@ -76,7 +76,7 @@ def push_unsubscribe(request):
 
 @login_required
 def reset_test_data(request):
-    """테스트로 쌓인 재발주 건·이력·알림·품목·파일을 지우고 데모 데이터를 다시 채운다.
+    """테스트로 쌓인 발주 건·이력·알림·품목·파일을 지우고 데모 데이터를 다시 채운다.
     Render 무료 플랜은 Shell이 없어 관리자(nousbo)가 브라우저에서 직접 실행할 수 있도록
     만든 화면 — reset_data 관리 명령을 그대로 호출한다. 계정(User/UserProfile)은 건드리지
     않는다."""
@@ -86,7 +86,7 @@ def reset_test_data(request):
         call_command('reset_data')
         messages.success(
             request,
-            '테스트 데이터(재발주 건·이력·알림·품목·파일)를 초기화하고 데모 데이터를 다시 채웠습니다. 계정 정보는 그대로입니다.')
+            '테스트 데이터(발주 건·이력·알림·품목·파일)를 초기화하고 데모 데이터를 다시 채웠습니다. 계정 정보는 그대로입니다.')
         return redirect('workflow:dashboard')
     return render(request, 'workflow/reset_confirm.html')
 
@@ -140,7 +140,7 @@ def dashboard(request):
         ).select_related('product', 'requester').order_by('-updated_at')
     elif role == UserProfile.Role.DESIGNER:
         pending = ReorderRequest.objects.filter(status=Status.DESIGN_EDIT).select_related('product')
-        # 디자인팀 입장에서 "요청자"는 최초 재발주를 올린 울산공장이 아니라, 지금 이
+        # 디자인팀 입장에서 "요청자"는 최초 발주요청을 올린 울산공장이 아니라, 지금 이
         # 수정 지시를 내린 1차 검토·관리 창구 담당자(박현경 팀장 또는 부재 시 대체자
         # 김신덕 본부장)다 — 건마다 가장 최근 수정 요청 이벤트의 처리자를 붙여준다.
         for r in pending:
@@ -163,7 +163,7 @@ def dashboard(request):
 
 @login_required
 def history(request):
-    """완료/취소된 재발주 건 이력 — 요청번호·품목명 키워드 검색 + 상태 필터 + 페이지네이션.
+    """완료/취소된 발주 건 이력 — 요청번호·품목명 키워드 검색 + 상태 필터 + 페이지네이션.
     대시보드가 진행중인 건만 보여주도록 분리되면서, 지난 이력을 따로 찾아볼 수 있게 만든 화면.
     요청자는 본인이 등록한 건만, 그 외 역할(리뷰어/디자인/연구소)은 회사 전체 이력을 본다."""
     from django.core.paginator import Paginator
@@ -204,7 +204,7 @@ def history(request):
 def new_request(request):
     profile = get_profile(request.user)
     if not profile or profile.role != UserProfile.Role.REQUESTER:
-        messages.error(request, '요청자(울산공장)만 재발주를 등록할 수 있습니다.')
+        messages.error(request, '요청자(울산공장)만 발주요청을 등록할 수 있습니다.')
         return redirect('workflow:dashboard')
 
     if request.method == 'POST':
@@ -218,7 +218,7 @@ def new_request(request):
                     request,
                     f'"{existing.product.name}"에 대해 이미 진행중인 건이 있습니다 ({existing.request_no}). 중복 등록을 막기 위해 기존 건으로 이동합니다.')
                 return redirect('workflow:request_detail', pk=existing.pk)
-            messages.success(request, '재발주 요청을 등록했습니다.')
+            messages.success(request, '발주요청을 등록했습니다.')
             return redirect('workflow:request_detail', pk=req.pk)
     else:
         form = NewRequestForm()

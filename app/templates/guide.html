@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>포장지 재발주 시스템 사용 매뉴얼</title>
+<title>포장지 발주관리 시스템 사용 매뉴얼</title>
 <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/icon-32.png' %}">
 <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
@@ -264,7 +264,7 @@
 <div class="shell">
   <header class="masthead">
     <div class="eyebrow">프로그램 설명서</div>
-    <h1>포장지 재발주 관리 시스템 사용법</h1>
+    <h1>포장지 발주관리 시스템 사용법</h1>
     <p>재고 부족이나 표시사항 수정으로 포장지(라벨·PP포대)를 다시 찍어야 할 때, 이메일 없이 이 시스템 안에서 요청부터 최종 전달까지 처리합니다. 아래에서 본인 역할을 찾아 순서대로 따라 하시면 됩니다.</p>
   </header>
 
@@ -283,7 +283,7 @@
     <section id="overview">
       <div class="eyebrow">01 · 개요</div>
       <h2>시스템이 하는 일</h2>
-      <p class="lead">포장지 재발주건이 등록되면, 아래 담당자 4명을 순서대로 거쳐 최종 승인 파일이 울산공장에 전달될 때까지 시스템이 자동으로 다음 담당자에게 알리고, 진행한 처리내역을 이력으로 남깁니다.</p>
+      <p class="lead">포장지 발주건이 등록되면, 아래 담당자 4명을 순서대로 거쳐 최종 승인 파일이 울산공장에 전달될 때까지 시스템이 자동으로 다음 담당자에게 알리고, 진행한 처리내역을 이력으로 남깁니다.</p>
 
       <div class="table-scroll" style="margin-bottom:26px;">
         <table>
@@ -293,7 +293,7 @@
               <td><span class="role-tag requester">요청자</span></td>
               <td>이정인 매니저</td>
               <td>울산공장</td>
-              <td>재발주 건 등록, 진행 상황 확인, 완료 후 최종 파일 수령</td>
+              <td>발주 건 등록, 진행 상황 확인, 완료 후 최종 파일 수령</td>
             </tr>
             <tr>
               <td><span class="role-tag reviewer">1차 검토·관리 창구</span></td>
@@ -318,7 +318,7 @@
       </div>
 
       <figure class="diagram">
-        <svg viewBox="0 0 980 380" role="img" aria-label="재발주 건은 1차검토중에서 시작해 최종검수중, 전달대기를 거쳐 완료로 끝난다. 1차검토중과 최종검수중에서는 반려·수정필요로 앞 단계로 되돌아갈 수 있고, 1차검토중에서 요청 자체가 취소될 수도 있다.">
+        <svg viewBox="0 0 980 380" role="img" aria-label="발주 건은 1차검토중에서 시작해 최종검수중, 전달대기를 거쳐 완료로 끝난다. 1차검토중과 최종검수중에서는 반려·수정필요로 앞 단계로 되돌아갈 수 있고, 1차검토중에서 요청 자체가 취소될 수도 있다.">
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -379,7 +379,7 @@
             <text x="806" y="153" font-size="10.5" stroke="none" fill="currentColor">전달 완료</text>
           </g>
         </svg>
-        <figcaption>재발주 건의 상태 흐름. 문제가 발견되면 1차검토중·최종검수중 두 지점에서 화살표를 따라 이전 단계로 되돌아가며, 되돌아간 사실은 그 건을 거쳐간 담당자 전원에게 알림으로 전달됩니다.</figcaption>
+        <figcaption>발주 건의 상태 흐름. 문제가 발견되면 1차검토중·최종검수중 두 지점에서 화살표를 따라 이전 단계로 되돌아가며, 되돌아간 사실은 그 건을 거쳐간 담당자 전원에게 알림으로 전달됩니다.</figcaption>
       </figure>
 
       <div class="grid-2" style="margin-top:24px;">
@@ -402,10 +402,10 @@
       <div class="eyebrow">02 · 요청자</div>
       <div class="role-head">
         <h2>울산공장 — 이정인 매니저</h2>
-        <span class="who">재발주를 처음 트리거하는 역할</span>
+        <span class="who">발주를 처음 트리거하는 역할</span>
         <span class="account">계정 haon</span>
       </div>
-      <p class="lead">포장지 재고가 부족해지거나 표시사항 등을 고쳐야 할 때 이 화면에서 재발주 건을 등록합니다. 이후 진행 상황은 대시보드에서 실시간으로 확인할 수 있어, 확인차 메일을 보낼 필요가 없습니다.</p>
+      <p class="lead">포장지 재고가 부족해지거나 표시사항 등을 고쳐야 할 때 이 화면에서 발주 건을 등록합니다. 이후 진행 상황은 대시보드에서 실시간으로 확인할 수 있어, 확인차 메일을 보낼 필요가 없습니다.</p>
 
       <ol class="steps">
         <li>
@@ -416,8 +416,8 @@
           <div class="note">대시보드에는 <strong>진행 중인 건만</strong> 표시됩니다. 완료되거나 취소된 건은 목록이 계속 길어지지 않도록 자동으로 빠지며, 상단 <strong>"완료·취소 이력"</strong> 메뉴에서 요청번호·품목명으로 검색해 언제든 다시 찾아볼 수 있습니다.</div>
         </li>
         <li>
-          <h3>새 재발주 요청 등록</h3>
-          <p>대시보드 상단의 <strong>"+ 재발주 요청 등록"</strong> 버튼을 누르고, 품목(품목코드-품목명)과 재발주 요청 사유(재고 소진(임박) / 표시사항 등 수정 필요)를 선택한 뒤 등록합니다.</p>
+          <h3>새 발주요청 등록</h3>
+          <p>대시보드 상단의 <strong>"+ 발주요청 등록"</strong> 버튼을 누르고, 품목(품목코드-품목명)과 발주요청 사유(재고 소진(임박) / 표시사항 등 수정 필요)를 선택한 뒤 등록합니다.</p>
           <div class="note">품목이 많아 목록이 길면, 선택창 위 <strong>검색창에 품목명이나 품목코드 일부를 입력</strong>해 목록을 좁힐 수 있습니다.</div>
           <div class="note">사유 선택 아래 <strong>"요청사항"</strong> 칸에 구체적인 내용(예: 어떤 표시사항을 어떻게 고쳐야 하는지)을 간단히 적어두면, 상세 페이지와 이력에 함께 남아 담당자들이 참고할 수 있습니다(선택 입력).</div>
           <div class="note">같은 품목에 이미 진행 중인 건이 있으면 새로 만들어지지 않고 <b>기존 건으로 자동 이동</b>합니다 — 중복 등록을 막기 위한 장치이니 당황하지 않아도 됩니다.</div>
@@ -481,7 +481,7 @@
         <li>
           <h3>일괄 업로드 · 일괄 다운로드</h3>
           <p>상단 <strong>"일괄 업로드/다운로드"</strong> 메뉴에서, 기존에 보유 중인 포장지 파일들을 한 번에 이관할 수 있습니다. 파일을 고르면 AI+이미지/PDF 쌍을 자동으로 묶어 보여주고, 묶음마다 연결할 품목을 화면에서 바로 검색해 선택하면 됩니다. 여러 품목의 최종 승인본을 zip 하나로 묶어 이력 목록(manifest.csv)과 함께 다운로드하는 것도 같은 화면에서 할 수 있습니다.</p>
-          <div class="note">일괄 업로드는 정상적인 검토 절차를 거치지 않고 파일을 바로 등록·승인 처리하는 방식이라, 묶음마다 <strong>승인자·승인일·일괄업로드 사유를 모두 필수로 입력</strong>해야 제출됩니다. 등록되면 완료 상태의 재발주 건이 자동으로 하나 만들어져 요청번호가 채번되고 <strong>"완료·취소 이력"</strong>에도 그대로 나타나므로, 나중에 이 버전이 왜 생겼는지 추적할 수 있습니다. 일괄 업로드만 모아보려면 "일괄 업로드 이력" 화면을 이용하세요.</div>
+          <div class="note">일괄 업로드는 정상적인 검토 절차를 거치지 않고 파일을 바로 등록·승인 처리하는 방식이라, 묶음마다 <strong>승인자·승인일·일괄업로드 사유를 모두 필수로 입력</strong>해야 제출됩니다. 등록되면 완료 상태의 발주 건이 자동으로 하나 만들어져 요청번호가 채번되고, 사유는 <strong>"파일관리요청"</strong>으로 표시되어 <strong>"완료·취소 이력"</strong>에도 그대로 나타나므로, 나중에 이 버전이 왜 생겼는지 추적할 수 있습니다. 일괄 업로드만 모아보려면 "일괄 업로드 이력" 화면을 이용하세요.</div>
         </li>
       </ol>
     </section>

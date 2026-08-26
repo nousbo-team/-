@@ -62,9 +62,9 @@ def bulk_home(request):
 
 @login_required
 def bulk_upload_history(request):
-    """일괄 업로드는 특정 재발주 건(ReorderRequest)에 매이지 않는 품목 파일 관리라,
-    그 건의 이력(타임라인)에는 남지 않는다 — 나중에 "이 버전이 왜 갑자기 바뀌었는지"
-    추적할 곳이 없어지는 문제가 있어, 일괄 업로드로 등록된 버전만 모아 별도로 보여준다."""
+    """일괄 업로드로 등록된 버전만 모아 별도로 보여준다 — create_bulk_upload_request가
+    건마다 완료 상태의 발주 건을 만들어 완료·취소 이력에도 나타나지만, 일괄 업로드만
+    따로 훑어보고 싶을 때 여기서 한 번에 확인할 수 있다."""
     q = request.GET.get('q', '').strip()
     logs = (PackagingFile.objects
             .filter(is_bulk_upload=True)
@@ -76,7 +76,7 @@ def bulk_upload_history(request):
     paginator = Paginator(logs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    # 완료·취소 이력(workflow:history)에도 같이 노출되는 재발주 건 요청번호를 함께
+    # 완료·취소 이력(workflow:history)에도 같이 노출되는 발주 건 요청번호를 함께
     # 보여준다 — create_bulk_upload_request가 PackagingFile마다 만들어둔 건이다.
     file_ids = [f.pk for f in page_obj]
     request_by_file = {
@@ -149,8 +149,8 @@ def bulk_upload(request):
             pkg.note = f'{pkg.note} · 원 승인자: {approver}'
         pkg.save(update_fields=['approved_at', 'note'])
 
-        # 특정 재발주 건과 연결되지 않는 파일 갱신이라 "완료·취소 이력"에 안 잡히고
-        # 나중에 이 버전이 왜 생겼는지 추적할 수 없었다 — 완료 상태의 재발주 건을
+        # 특정 발주 건과 연결되지 않는 파일 갱신이라 "완료·취소 이력"에 안 잡히고
+        # 나중에 이 버전이 왜 생겼는지 추적할 수 없었다 — 완료 상태의 발주 건을
         # 하나씩 만들어 요청번호를 채번하고 사유를 이력에 남긴다.
         services.create_bulk_upload_request(product, request.user, pkg, pkg.note)
         registered.append(f'{product.name} v{pkg.version}')

@@ -9,7 +9,7 @@ from datetime import timedelta
 from accounts.models import UserProfile
 from catalog.models import PackagingFile, Product
 
-from . import services, views_bulk
+from . import services
 from .models import ReorderRequest
 
 User = get_user_model()
@@ -184,20 +184,6 @@ class WorkflowTestCase(TestCase):
         req2, _ = services.create_request(other_product, self.requester, ReorderRequest.Reason.STOCK_SHORTAGE)
         self.assertNotEqual(req1.request_no, req2.request_no)
         self.assertTrue(req2.request_no.endswith('-002'))
-
-    def test_bulk_resolve_product_upserts_by_code_and_renames(self):
-        # 기존 품목코드로 다시 매핑되면 품목명이 바뀌어도 같은 품목으로 갱신되어야 한다.
-        map_row = {'item_code': 'TEST-0001', 'product_name': '테스트 라벨(개명)', 'note': '', 'approver': '', 'approved_date': None}
-        resolved = views_bulk._resolve_product('아무파일', map_row)
-        self.assertEqual(resolved.pk, self.product.pk)
-        self.product.refresh_from_db()
-        self.assertEqual(self.product.name, '테스트 라벨(개명)')
-
-    def test_bulk_resolve_product_creates_new_when_code_unknown(self):
-        map_row = {'item_code': 'NEW-9999', 'product_name': '신규 품목', 'note': '', 'approver': '', 'approved_date': None}
-        resolved = views_bulk._resolve_product('아무파일', map_row)
-        self.assertEqual(resolved.code, 'NEW-9999')
-        self.assertEqual(resolved.name, '신규 품목')
 
     def test_wrong_stage_action_rejected(self):
         req = self._new_request()

@@ -12,7 +12,7 @@ class ProductChoiceField(forms.ModelChoiceField):
 
 class NewRequestForm(forms.Form):
     product = ProductChoiceField(queryset=Product.objects.filter(is_active=True), label='품목')
-    reason = forms.ChoiceField(choices=ReorderRequest.Reason.choices, label='재발주 요청')
+    reason = forms.ChoiceField(choices=ReorderRequest.Reason.choices, label='발주요청')
     detail = forms.CharField(
         label='요청사항', required=False,
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '구체적인 요청 내용을 간략히 적어주세요 (선택)'}))
