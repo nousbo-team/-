@@ -16,6 +16,9 @@ from django.utils import timezone
 
 from catalog.models import PackagingFile, Product
 
+from . import services
+from .models import ReorderRequest
+
 PAIR_SUFFIX_RE = re.compile(r'(_ai|_jpg|_jpeg|_png|_gif|_pdf)$', re.IGNORECASE)
 VISUAL_EXTENSIONS = ('jpg', 'jpeg', 'png', 'gif', 'pdf')
 
@@ -73,6 +76,17 @@ def bulk_upload_history(request):
 
     paginator = Paginator(logs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
+
+    # 완료·취소 이력(workflow:history)에도 같이 노출되는 재발주 건 요청번호를 함께
+    # 보여준다 — create_bulk_upload_request가 PackagingFile마다 만들어둔 건이다.
+    file_ids = [f.pk for f in page_obj]
+    request_by_file = {
+        r.current_file_id: r
+        for r in ReorderRequest.objects.filter(current_file_id__in=file_ids).only('request_no', 'current_file')
+    }
+    for f in page_obj:
+        f.linked_request = request_by_file.get(f.pk)
+
     return render(request, 'workflow/bulk_upload_history.html', {'page_obj': page_obj, 'q': q})
 
 
@@ -232,6 +246,11 @@ def bulk_upload(request):
                 pkg.approved_at = approved_at
             pkg.note = f"{pkg.note} · 원 승인자: {map_row['approver']}"
             pkg.save(update_fields=['approved_at', 'note'])
+
+        # 특정 재발주 건과 연결되지 않는 파일 갱신이라 "완료·취소 이력"에 안 잡히고
+        # 나중에 이 버전이 왜 생겼는지 추적할 수 없었다 — 완료 상태의 재발주 건을
+        # 하나씩 만들어 요청번호를 채번하고 사유를 이력에 남긴다.
+        services.create_bulk_upload_request(product, request.user, pkg, pkg.note)
         registered.append(f'{product.name} v{pkg.version}')
 
     if registered:

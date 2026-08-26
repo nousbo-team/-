@@ -23,10 +23,13 @@
 <div class="card table-wrap">
   {% if page_obj.object_list %}
   <table>
-    <thead><tr><th>품목코드</th><th>품목명</th><th>버전</th><th>등록자</th><th>등록일시</th><th>승인</th><th>비고(사유)</th></tr></thead>
+    <thead><tr><th>요청번호</th><th>품목코드</th><th>품목명</th><th>버전</th><th>등록자</th><th>등록일시</th><th>승인</th><th>비고(사유)</th></tr></thead>
     <tbody>
       {% for f in page_obj %}
       <tr>
+        <td data-label="요청번호">
+          {% if f.linked_request %}<a href="{% url 'workflow:request_detail' f.linked_request.pk %}">{{ f.linked_request.request_no }}</a>{% else %}—{% endif %}
+        </td>
         <td data-label="품목코드" style="font-family:monospace;font-size:12.5px;">{{ f.product.code }}</td>
         <td data-label="품목명"><a class="truncate" href="{% url 'catalog:product_detail' f.product.pk %}" title="{{ f.product.name }}">{{ f.product.name }}</a></td>
         <td data-label="버전">v{{ f.version }}</td>

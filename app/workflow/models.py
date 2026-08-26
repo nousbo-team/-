@@ -37,6 +37,7 @@ class ReorderRequest(models.Model):
     class Reason(models.TextChoices):
         STOCK_SHORTAGE = 'STOCK_SHORTAGE', '재고 소진(임박)'
         NEEDS_REVISION = 'NEEDS_REVISION', '표시사항 등 수정 필요'
+        BULK_UPLOAD = 'BULK_UPLOAD', '일괄 업로드'
 
     request_no = models.CharField(max_length=20, unique=True, editable=False,
                                    help_text='자동 채번되는 요청번호 (예: RQ-20260722-001)')
@@ -119,6 +120,7 @@ class RequestEvent(models.Model):
         FINAL_REJECT = 'FINAL_REJECT', '반려'
         HANDOFF = 'HANDOFF', '최종파일 전달 · 완료'
         EXCEPTION_SKIP = 'EXCEPTION_SKIP', '3개월 예외 적용(최종검수 생략)'
+        BULK_UPLOAD = 'BULK_UPLOAD', '일괄 업로드로 파일 강제 갱신'
         NOTIFY = 'NOTIFY', '알림 발송'
         CANCELLED = 'CANCELLED', '요청 취소'
         DESIGN_REJECT = 'DESIGN_REJECT', '디자인 반려(1차검토로)'

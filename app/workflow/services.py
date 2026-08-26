@@ -151,6 +151,25 @@ def create_request(product, requester, reason, detail=''):
     return req, None
 
 
+def create_bulk_upload_request(product, actor, packaging_file, reason_detail):
+    """일괄 업로드(/bulk/)는 정상 재발주 승인 절차를 거치지 않고 파일을 바로
+    등록·교체한다 — 특정 재발주 건과 연결되지 않아, 이대로면 "완료·취소 이력"에도
+    안 잡히고 요청번호도 없어 나중에 이 버전이 왜 생겼는지 추적할 수 없다. 그래서
+    일괄 업로드 한 건마다 완료 상태의 재발주 건을 하나씩 만들어 요청번호를 채번하고,
+    이력(타임라인)에 사유를 남긴다 — 검토 절차 없이 강제로 갱신됐다는 사실이 그대로
+    드러나도록 사유(reason_detail)는 필수로 받는다."""
+    with transaction.atomic():
+        req = ReorderRequest.objects.create(
+            request_no=_generate_request_no(),
+            product=product, requester=actor, reason=ReorderRequest.Reason.BULK_UPLOAD,
+            detail=reason_detail, status=ReorderRequest.Status.COMPLETED,
+            current_file=packaging_file,
+        )
+        _log(req, actor, RequestEvent.Action.BULK_UPLOAD,
+             note=f'일괄 업로드로 v{packaging_file.version} 파일이 검토 절차 없이 등록되었습니다. 사유: {reason_detail}')
+    return req
+
+
 def review_decision(req, actor, decision, note='', use_exception=False, attachment=None):
     """1차검토(REVIEW1) 처리. decision: 'CONFIRM_FINAL' | 'NEEDS_EDIT'.
     attachment: 디자인팀에 넘길 표시사항 가이드 등 참고 파일(선택, NEEDS_EDIT에서만 사용)."""
