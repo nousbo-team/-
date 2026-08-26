@@ -5,94 +5,391 @@
 <div class="eyebrow">AI 비서 (베타)</div>
 <h1>AI 비서</h1>
 <p class="subtitle">
-  현재 화면에서 볼 수 있는 발주 건·이력·파일 현황 안에서만 답합니다. 조회 전용이며,
-  승인·취소 등은 여기서 처리되지 않습니다 — 대시보드/발주요청 화면에서 직접 진행해주세요.
+  내가 볼 수 있는 발주 건·이력·파일 현황 안에서만 답합니다. 조회 전용이라 승인·취소는
+  여기서 처리되지 않습니다 — 대시보드/발주요청 화면에서 진행해주세요.
 </p>
 
+{% if assistant_disabled %}
 <div class="card">
-  {% if assistant_disabled %}
   <div class="empty-state">AI 비서 기능이 아직 설정되지 않았습니다(관리자에게 문의하세요).</div>
-  {% else %}
-  <div id="chat-log" class="chat-log" aria-live="polite">
-    <div class="chat-msg chat-msg-model">
-      안녕하세요! 발주 건 현황, 진행 상태, 파일 등을 물어보세요. 예: "내가 올린 발주 중 아직 안 끝난 게 뭐야?"
+</div>
+{% else %}
+<div class="chat-panel">
+  <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="대화 내용">
+    <div class="chat-row chat-row-model">
+      <div class="chat-avatar" aria-hidden="true">AI</div>
+      <div class="chat-bubble chat-bubble-model">
+        안녕하세요. 발주 건 현황·진행 상태·파일에 대해 물어보세요.
+      </div>
     </div>
   </div>
-  <form id="chat-form" class="chat-form">
+
+  <div id="chat-suggestions" class="chat-suggestions">
+    <button type="button" class="chip">아직 안 끝난 발주 알려줘</button>
+    <button type="button" class="chip">지금 내 차례인 건 있어?</button>
+    <button type="button" class="chip">이번 달에 완료된 건 뭐야?</button>
+  </div>
+
+  <form id="chat-form" class="chat-composer">
     {% csrf_token %}
-    <textarea id="chat-input" rows="2" placeholder="질문을 입력하세요" required></textarea>
-    <button type="submit" class="btn btn-primary" id="chat-send">보내기</button>
+    <label class="sr-only" for="chat-input">질문 입력</label>
+    <textarea id="chat-input" rows="1" placeholder="질문을 입력하세요" autocomplete="off"></textarea>
+    <button type="submit" class="chat-send" id="chat-send" aria-label="보내기" title="보내기">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M3.6 20.4 21 12 3.6 3.6l.9 6.6L15 12l-10.5 1.8z" fill="currentColor"/>
+      </svg>
+    </button>
   </form>
-  {% endif %}
 </div>
 
-{% if not assistant_disabled %}
 <style>
-.chat-log { display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto; padding: 4px 2px 12px; }
-.chat-msg { max-width: 80%; padding: 10px 13px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
-.chat-msg-user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
-.chat-msg-model { align-self: flex-start; background: var(--accent-soft); color: var(--accent-ink); border-bottom-left-radius: 3px; }
-.chat-msg-error { align-self: flex-start; background: #fdecea; color: #9b2c2c; border-bottom-left-radius: 3px; }
-.chat-form { display: flex; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
-.chat-form textarea {
-  flex: 1; resize: none; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-  font-family: var(--font); font-size: 13.5px; color: var(--ink); background: #fff;
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.chat-form .btn { align-self: flex-end; }
+
+.chat-panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 18px;
+  min-height: 170px;
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.chat-row { display: flex; gap: 9px; align-items: flex-end; max-width: 100%; }
+.chat-row-user { flex-direction: row-reverse; }
+
+.chat-avatar {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 2px;
+}
+
+.chat-bubble {
+  max-width: min(76%, 560px);
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.62;
+  word-break: break-word;
+}
+.chat-bubble-model {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble-user {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble-error {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-bottom-left-radius: 4px;
+}
+
+/* 답변 안의 간단한 서식(목록·강조)만 렌더링한다 — 서버에서 이스케이프한 뒤 적용. */
+.chat-bubble p { margin: 0; }
+.chat-bubble p + p { margin-top: 7px; }
+.chat-bubble ul { margin: 6px 0 0; padding-left: 17px; }
+.chat-bubble li { margin: 2px 0; }
+.chat-bubble strong { font-weight: 700; }
+.chat-bubble code {
+  background: var(--accent-soft); color: var(--accent-ink);
+  padding: 1px 5px; border-radius: 4px; font-size: 12.5px;
+}
+.chat-bubble-user code { background: rgba(255, 255, 255, .18); color: #fff; }
+
+.chat-typing { display: inline-flex; gap: 4px; align-items: center; padding: 3px 0; }
+.chat-typing i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--ink-soft); opacity: .45;
+  animation: chat-blink 1.2s infinite ease-in-out;
+}
+.chat-typing i:nth-child(2) { animation-delay: .18s; }
+.chat-typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes chat-blink {
+  0%, 60%, 100% { opacity: .25; transform: translateY(0); }
+  30% { opacity: .85; transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing i { animation: none; opacity: .5; }
+}
+
+.chat-suggestions {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 0 18px 12px;
+}
+.chat-suggestions[hidden] { display: none; }
+.chip {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--font);
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.chip:hover { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-soft); }
+
+.chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+.chat-composer textarea {
+  flex: 1;
+  resize: none;
+  max-height: 140px;
+  /* border-box가 아니면 테두리 두께만큼 scrollHeight > clientHeight가 되어,
+     한 줄짜리 입력에도 스크롤바가 유령처럼 나타난다. */
+  box-sizing: border-box;
+  overflow-y: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fff;
+}
+.chat-composer textarea:focus { outline: 2px solid var(--accent-soft); outline-offset: 1px; border-color: var(--accent); }
+
+.chat-send {
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.chat-send:disabled { opacity: .45; cursor: not-allowed; }
+.chat-send:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+.chat-hint { font-size: 11.5px; color: var(--ink-soft); margin: 8px 2px 0; }
+
+@media (max-width: 640px) {
+  .chat-bubble { max-width: 85%; }
+  .chat-log { max-height: 58vh; padding: 16px 12px; }
+}
 </style>
+
+<p class="chat-hint">
+  <strong>Enter</strong>로 전송, <strong>Shift+Enter</strong>로 줄바꿈. 답변은 현재 시스템에 저장된
+  데이터를 근거로 생성되니, 중요한 결정 전에는 해당 화면에서 원본을 확인해주세요.
+</p>
+
 <script>
 (function () {
-  var log = document.getElementById('chat-log');
-  var form = document.getElementById('chat-form');
-  var input = document.getElementById('chat-input');
-  var sendBtn = document.getElementById('chat-send');
-  var history = [];
+  const log = document.getElementById('chat-log');
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  const suggestions = document.getElementById('chat-suggestions');
+  const streamUrl = '{% url "workflow:assistant_ask_stream" %}';
+  let history = [];
+  let busy = false;
 
   function getCsrfToken() {
-    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
     return m ? m[1] : '';
   }
-  function appendMessage(text, cls) {
-    var div = document.createElement('div');
-    div.className = 'chat-msg ' + cls;
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
     div.textContent = text;
-    log.appendChild(div);
+    return div.innerHTML;
+  }
+
+  // 모델이 돌려주는 아주 가벼운 마크다운(**강조**, `코드`, "- " 목록)만 서식으로 바꾼다.
+  // 반드시 이스케이프한 뒤에 적용하므로 답변 안의 태그가 실행될 여지는 없다.
+  function renderMarkdownLite(text) {
+    const blocks = [];
+    let list = null;
+    escapeHtml(text).split('\n').forEach(function (line) {
+      const trimmed = line.trim();
+      const bullet = trimmed.match(/^[-*·]\s+(.*)$/);
+      if (bullet) {
+        if (!list) { list = []; blocks.push({ type: 'ul', items: list }); }
+        list.push(bullet[1]);
+        return;
+      }
+      list = null;
+      if (trimmed) blocks.push({ type: 'p', text: trimmed });
+    });
+
+    const inline = function (s) {
+      return s
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    };
+    return blocks.map(function (b) {
+      if (b.type === 'ul') {
+        return '<ul>' + b.items.map(function (i) { return '<li>' + inline(i) + '</li>'; }).join('') + '</ul>';
+      }
+      return '<p>' + inline(b.text) + '</p>';
+    }).join('') || '<p></p>';
+  }
+
+  function atBottom() {
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+  }
+  function scrollToBottom() {
     log.scrollTop = log.scrollHeight;
-    return div;
+  }
+
+  function addRow(who) {
+    const row = document.createElement('div');
+    row.className = 'chat-row chat-row-' + who;
+    if (who === 'model') {
+      const avatar = document.createElement('div');
+      avatar.className = 'chat-avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.textContent = 'AI';
+      row.appendChild(avatar);
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble chat-bubble-' + who;
+    row.appendChild(bubble);
+    log.appendChild(row);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function showTyping(bubble) {
+    bubble.innerHTML = '<span class="chat-typing"><i></i><i></i><i></i></span>';
+  }
+
+  function setBusy(state) {
+    busy = state;
+    sendBtn.disabled = state;
+    input.readOnly = state;
+  }
+
+  function autoGrow() {
+    input.style.height = 'auto';
+    const needed = input.scrollHeight;
+    input.style.height = Math.min(needed, 140) + 'px';
+    // 최대 높이를 넘어설 때만 스크롤을 허용한다.
+    input.style.overflowY = needed > 140 ? 'auto' : 'hidden';
+  }
+  input.addEventListener('input', autoGrow);
+
+  // Enter로 전송, Shift+Enter로 줄바꿈. 한글 입력 조합 중(Enter로 한자·이모지 후보를
+  // 확정하는 순간)에는 전송하지 않는다 — isComposing 확인이 없으면 마지막 글자를
+  // 확정하는 Enter가 그대로 전송으로 새어나간다.
+  input.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    form.requestSubmit();
+  });
+
+  suggestions.addEventListener('click', function (e) {
+    const chip = e.target.closest('.chip');
+    if (!chip || busy) return;
+    input.value = chip.textContent.trim();
+    autoGrow();
+    form.requestSubmit();
+  });
+
+  async function streamAnswer(question, bubble) {
+    const res = await fetch(streamUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify({ question: question, history: history.slice(0, -1) }),
+    });
+    if (!res.ok || !res.body) throw new Error('bad response');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let answer = '';
+    let failed = null;
+
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        let payload;
+        try { payload = JSON.parse(line.slice(5).trim()); } catch (err) { continue; }
+        if (payload.error) { failed = payload.error; continue; }
+        if (!payload.text) continue;
+        const stick = atBottom();
+        answer += payload.text;
+        bubble.innerHTML = renderMarkdownLite(answer);
+        if (stick) scrollToBottom();
+      }
+    }
+
+    if (failed) throw new Error(failed);
+    if (!answer.trim()) throw new Error('AI 비서가 빈 답변을 반환했습니다.');
+    return answer.trim();
   }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    var question = input.value.trim();
+    if (busy) return;
+    const question = input.value.trim();
     if (!question) return;
-    appendMessage(question, 'chat-msg-user');
+
+    suggestions.hidden = true;
+    addRow('user').textContent = question;
     history.push({ role: 'user', text: question });
     input.value = '';
-    input.disabled = true;
-    sendBtn.disabled = true;
-    var pending = appendMessage('생각하는 중…', 'chat-msg-model');
+    autoGrow();
+    setBusy(true);
 
-    fetch('{% url "workflow:assistant_ask" %}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-      body: JSON.stringify({ question: question, history: history.slice(0, -1) }),
-    }).then(function (res) { return res.json(); }).then(function (data) {
-      if (data.ok) {
-        pending.textContent = data.answer;
-        history.push({ role: 'model', text: data.answer });
-      } else {
-        pending.className = 'chat-msg chat-msg-error';
-        pending.textContent = data.error || 'AI 비서가 응답하지 못했습니다.';
-        history.pop();
-      }
-    }).catch(function () {
-      pending.className = 'chat-msg chat-msg-error';
-      pending.textContent = '네트워크 오류로 응답을 받지 못했습니다.';
+    const bubble = addRow('model');
+    showTyping(bubble);
+
+    streamAnswer(question, bubble).then(function (answer) {
+      history.push({ role: 'model', text: answer });
+    }).catch(function (err) {
+      bubble.className = 'chat-bubble chat-bubble-error';
+      bubble.textContent = (err && err.message && err.message !== 'bad response')
+        ? err.message
+        : 'AI 비서가 응답하지 못했습니다. 잠시 후 다시 시도해주세요.';
       history.pop();
     }).finally(function () {
-      input.disabled = false;
-      sendBtn.disabled = false;
+      setBusy(false);
       input.focus();
+      scrollToBottom();
     });
   });
 })();

@@ -382,3 +382,80 @@ class AssistantTestCase(TestCase):
                 '/assistant/ask/', data=json.dumps({'question': '  '}),
                 content_type='application/json')
         self.assertEqual(resp.status_code, 400)
+
+    def test_stream_view_emits_sse_chunks_from_mocked_gemini(self):
+        """스트리밍 경로 — Gemini의 SSE 조각들이 그대로 화면용 이벤트로 흘러가는지."""
+        def _sse(text):
+            body = {'candidates': [{'content': {'parts': [{'text': text}]}}]}
+            return 'data: ' + json.dumps(body, ensure_ascii=False)
+
+        class _FakeStreamResponse:
+            status_code = 200
+
+            def iter_lines(self, decode_unicode=False):
+                return iter([_sse('안녕하'), '', _sse('세요.')])
+
+            def close(self):
+                pass
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            with mock.patch('workflow.assistant.requests.post', return_value=_FakeStreamResponse()):
+                resp = self.client.post(
+                    '/assistant/ask/stream/', data=json.dumps({'question': '상태 알려줘'}),
+                    content_type='application/json')
+                body = b''.join(resp.streaming_content).decode()
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'text/event-stream')
+        self.assertIn('안녕하', body)
+        self.assertIn('세요.', body)
+        self.assertIn('"done": true', body)
+
+    def test_stream_view_reports_error_inside_stream(self):
+        """응답이 이미 시작된 뒤에는 상태코드를 못 바꾸므로, 오류도 스트림 안에서 나와야 한다."""
+        class _FakeErrorResponse:
+            status_code = 500
+            text = 'boom'
+
+            def close(self):
+                pass
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            with mock.patch('workflow.assistant.requests.post', return_value=_FakeErrorResponse()):
+                resp = self.client.post(
+                    '/assistant/ask/stream/', data=json.dumps({'question': '상태 알려줘'}),
+                    content_type='application/json')
+                body = b''.join(resp.streaming_content).decode()
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('error', body)
+
+    def test_stream_retries_without_thinking_config_on_400(self):
+        """thinkingConfig를 모르는 모델이 400을 주면, 그 옵션만 빼고 한 번 더 시도한다."""
+        class _Fake400:
+            status_code = 400
+            text = 'unknown field thinkingConfig'
+
+            def close(self):
+                pass
+
+        class _FakeOk:
+            status_code = 200
+
+            def iter_lines(self, decode_unicode=False):
+                body = {'candidates': [{'content': {'parts': [{'text': '재시도 성공'}]}}]}
+                return iter(['data: ' + json.dumps(body, ensure_ascii=False)])
+
+            def close(self):
+                pass
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            with mock.patch('workflow.assistant.requests.post',
+                            side_effect=[_Fake400(), _FakeOk()]) as post:
+                chunks = list(assistant.ask_stream(self.user, '상태 알려줘'))
+
+        self.assertEqual(chunks, ['재시도 성공'])
+        self.assertEqual(post.call_count, 2)
+        # 두 번째 호출에는 thinkingConfig가 빠져 있어야 한다.
+        second_config = post.call_args_list[1].kwargs['json']['generationConfig']
+        self.assertNotIn('thinkingConfig', second_config)

@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.db import models
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -105,6 +105,39 @@ def assistant_ask(request):
         return JsonResponse({'ok': False, 'error': str(e)}, status=502)
 
     return JsonResponse({'ok': True, 'answer': answer})
+
+
+@login_required
+@require_POST
+def assistant_ask_stream(request):
+    """스트리밍(SSE) 버전 — 답변이 다 만들어질 때까지 기다리지 않고 생성되는 대로
+    조각을 흘려보낸다(화면에서 타이핑되듯 보임). 응답이 이미 시작된 뒤에는 HTTP
+    상태코드를 바꿀 수 없으므로, 오류도 스트림 안에서 {"error": ...}로 내보낸다."""
+    try:
+        data = json.loads(request.body)
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    question = (data.get('question') or '').strip()
+    if not question:
+        return JsonResponse({'ok': False, 'error': '질문을 입력해주세요.'}, status=400)
+    history = data.get('history') or []
+    user = request.user  # 제너레이터는 응답이 시작된 뒤 실행되므로 미리 붙잡아 둔다.
+
+    def event_stream():
+        try:
+            for chunk in assistant.ask_stream(user, question, history=history):
+                yield f'data: {json.dumps({"text": chunk}, ensure_ascii=False)}\n\n'
+        except assistant.AssistantError as e:
+            yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
+        yield 'data: {"done": true}\n\n'
+
+    resp = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    resp['Cache-Control'] = 'no-cache'
+    # 중간 프록시(예: Render 앞단)가 응답을 모아뒀다가 한 번에 보내면 스트리밍이
+    # 의미가 없어진다 — 버퍼링하지 말라고 알린다.
+    resp['X-Accel-Buffering'] = 'no'
+    return resp
 
 
 @login_required

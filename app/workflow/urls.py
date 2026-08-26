@@ -16,6 +16,7 @@ urlpatterns = [
     path('notifications/', views.notifications, name='notifications'),
     path('assistant/', views.assistant_page, name='assistant'),
     path('assistant/ask/', views.assistant_ask, name='assistant_ask'),
+    path('assistant/ask/stream/', views.assistant_ask_stream, name='assistant_ask_stream'),
     path('bulk/', views_bulk.bulk_home, name='bulk'),
     path('bulk/history/', views_bulk.bulk_upload_history, name='bulk_upload_history'),
     path('bulk/upload/', views_bulk.bulk_upload, name='bulk_upload'),
