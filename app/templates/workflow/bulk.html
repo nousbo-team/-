@@ -21,17 +21,6 @@
 
     <div id="bulk-groups" style="margin-top:14px;"></div>
 
-    <details style="margin-top:14px;">
-      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-soft);">엑셀 매핑표로 대신 지정하기 (대량 이관 시 편리, 선택)</summary>
-      <div class="field" style="margin-top:10px;">
-        <label>엑셀 매핑표</label>
-        <input type="file" name="mapping_file" accept=".xlsx">
-        <div class="hint">열: 파일명, 품목코드, 품목명, 승인일(YYYY-MM-DD), 승인자, 비고. 같은 품목코드가 이미 있으면 품목명이 바뀌어도 같은 품목으로 최신 정보로 갱신됩니다. 이 파일이 있고 위에서 품목을 직접 고르지 않은 묶음은 이 매핑표(또는 파일명 자동 매칭)로 처리됩니다.
-          <a href="{% url 'workflow:bulk_mapping_template' %}">빈 매핑표 양식 다운로드</a>
-        </div>
-      </div>
-    </details>
-
     <input type="hidden" name="mapping_json" id="bulk-mapping-json">
     <button class="btn btn-primary" type="submit" style="margin-top:14px;">일괄 업로드</button>
   </form>
@@ -103,9 +92,18 @@
         '</select>' +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<input type="text" class="bulk-approver" placeholder="승인자(선택)" style="' + fieldStyle('flex:1;min-width:100px;') + '">' +
-        '<input type="date" class="bulk-approved-date" style="' + fieldStyle('flex:1;min-width:130px;') + '">' +
-        '<input type="text" class="bulk-note" placeholder="비고 — 왜 이 버전으로 바뀌는지(필수)" style="' + fieldStyle('flex:2;min-width:140px;') + '" required>' +
+        '<div style="flex:1;min-width:100px;">' +
+        '<label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px;">승인자(필수)</label>' +
+        '<input type="text" class="bulk-approver" placeholder="승인자" style="' + fieldStyle('width:100%;') + '" required>' +
+        '</div>' +
+        '<div style="flex:1;min-width:130px;">' +
+        '<label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px;">승인일(필수)</label>' +
+        '<input type="date" class="bulk-approved-date" style="' + fieldStyle('width:100%;') + '" required>' +
+        '</div>' +
+        '<div style="flex:2;min-width:160px;">' +
+        '<label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px;">일괄업로드 사유(필수)</label>' +
+        '<input type="text" class="bulk-note" placeholder="왜 이 버전으로 바뀌는지" style="' + fieldStyle('width:100%;') + '" required>' +
+        '</div>' +
         '</div>';
       groupsEl.appendChild(row);
 
@@ -135,24 +133,26 @@
   form.addEventListener('submit', function (e) {
     var mapping = {};
     var missing = [];
-    var missingNote = [];
+    var missingFields = [];
     Array.prototype.slice.call(groupsEl.querySelectorAll('[data-group-key]')).forEach(function (row) {
       var select = row.querySelector('.bulk-product-select');
       if (!select) return; // 짝이 안 맞아 제외된 묶음
       var key = row.dataset.groupKey;
       if (!select.value) { missing.push(key); return; }
+      var approver = row.querySelector('.bulk-approver').value.trim();
+      var approvedDate = row.querySelector('.bulk-approved-date').value;
       var note = row.querySelector('.bulk-note').value.trim();
-      if (!note) { missingNote.push(key); return; }
+      if (!approver || !approvedDate || !note) { missingFields.push(key); return; }
       mapping[key] = {
         product_id: select.value,
-        approver: row.querySelector('.bulk-approver').value.trim(),
-        approved_date: row.querySelector('.bulk-approved-date').value,
+        approver: approver,
+        approved_date: approvedDate,
         note: note,
       };
     });
-    if (missingNote.length) {
+    if (missingFields.length) {
       e.preventDefault();
-      alert('다음 파일 묶음에 비고(버전을 바꾸는 이유)를 입력해주세요:\n' + missingNote.join('\n'));
+      alert('다음 파일 묶음에 승인자·승인일·일괄업로드 사유를 모두 입력해주세요:\n' + missingFields.join('\n'));
       return;
     }
     if (missing.length) {

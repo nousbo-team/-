@@ -5,7 +5,6 @@ import re
 import zipfile
 from datetime import datetime
 
-import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -91,105 +90,17 @@ def bulk_upload_history(request):
 
 
 @login_required
-def bulk_mapping_template(request):
-    """일괄 업로드용 빈 엑셀 매핑표 양식을 다운로드한다(_read_mapping이 읽는 형식과 동일)."""
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = '매핑표'
-
-    header = ['파일명', '품목코드', '품목명', '승인일', '승인자', '비고']
-    ws.append(header)
-    for cell in ws[1]:
-        cell.font = openpyxl.styles.Font(bold=True)
-
-    ws.append(['예시_그린비료_v1.ai', 'FERT-PP-1001', '그린비료 20kg PP포대', '2026-01-15', '조현종', '예시 행입니다 — 지우고 실제 데이터를 입력하세요'])
-    for cell in ws[2]:
-        cell.font = openpyxl.styles.Font(italic=True, color='888888')
-
-    widths = [26, 14, 26, 12, 10, 34]
-    for i, width in enumerate(widths, start=1):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
-
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="mapping_template.xlsx"'
-    return response
-
-
-def _read_mapping(mapping_file):
-    """엑셀 매핑표(파일명/품목코드/품목명/승인일/승인자/비고) → {파일명(확장자 제외): row dict}"""
-    mapping = {}
-    wb = openpyxl.load_workbook(mapping_file, read_only=True)
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
-    if not rows:
-        return mapping
-    header = [str(h).strip() if h else '' for h in rows[0]]
-    for row in rows[1:]:
-        data = dict(zip(header, row))
-        filename = str(data.get('파일명') or '').strip()
-        if not filename:
-            continue
-        key = PAIR_SUFFIX_RE.sub('', filename.rsplit('.', 1)[0])
-        mapping[key] = {
-            'item_code': str(data.get('품목코드') or '').strip(),
-            'product_name': str(data.get('품목명') or '').strip(),
-            'approved_date': data.get('승인일'),
-            'approver': str(data.get('승인자') or '').strip(),
-            'note': str(data.get('비고') or '').strip(),
-        }
-    return mapping
-
-
-def _resolve_product(base_key, map_row, product_id=None):
-    """화면에서 직접 품목을 골랐으면(product_id) 그걸로 확정 — 엑셀 매핑표나 파일명
-    추정은 아예 건너뛴다. product_id가 없을 때만 기존 방식(품목코드 upsert 또는
-    품목명 매칭)으로 넘어간다."""
-    if product_id:
-        return Product.objects.filter(pk=product_id).first()
-
-    item_code = map_row.get('item_code') if map_row else ''
-    product_name = (map_row.get('product_name') if map_row else '') or base_key
-
-    if item_code:
-        product = Product.objects.filter(code=item_code).first()
-        if product:
-            if product_name and product.name != product_name:
-                product.name = product_name
-                product.save(update_fields=['name'])
-            return product
-        if map_row.get('product_name'):
-            # 매핑표에 유형/제품군 정보가 없으므로 기본값으로 생성 — 필요 시 /admin에서 보정.
-            return Product.objects.create(
-                code=item_code, name=product_name,
-                category=Product.Category.LABEL, product_line=Product.ProductLine.FERTILIZER,
-            )
-        return None
-
-    product = Product.objects.filter(name=product_name).first()
-    if not product:
-        product = next((p for p in Product.objects.all() if p.name in base_key), None)
-    return product
-
-
-@login_required
 def bulk_upload(request):
     if request.method != 'POST':
         return redirect('workflow:bulk')
 
     files = request.FILES.getlist('files')
-    mapping_file = request.FILES.get('mapping_file')
-    excel_mapping = _read_mapping(mapping_file) if mapping_file else {}
 
     # 화면에서 파일 묶음별로 직접 고른 품목/승인 정보 — bulk.html의 JS가 파일을
     # 고르는 즉시 같은 규칙(PAIR_SUFFIX_RE)으로 그룹을 만들어 미리 보여주고, 제출
-    # 시점에 이 JSON 하나로 실어 보낸다. 매번 엑셀 매핑표를 새로 만들 필요 없이
-    # 화면에서 바로 연결할 수 있게 하기 위함 — 엑셀 매핑표는 대량 이관 등에서
-    # 여전히 쓸 수 있도록 남겨두되, 화면 선택이 있으면 그쪽을 우선한다.
+    # 시점에 이 JSON 하나로 실어 보낸다. 엑셀 매핑표 없이 화면에서 바로 지정하는
+    # 방식만 지원한다 — 승인자·승인일·사유가 전부 필수라 JS가 값을 채우지 못하면
+    # 애초에 제출되지 않는다.
     try:
         ui_mapping = json.loads(request.POST.get('mapping_json') or '{}')
     except ValueError:
@@ -210,42 +121,33 @@ def bulk_upload(request):
             continue
 
         ui_row = ui_mapping.get(base_key)
-        if ui_row and ui_row.get('product_id'):
-            map_row = {
-                'note': ui_row.get('note', ''),
-                'approver': ui_row.get('approver', ''),
-                'approved_date': ui_row.get('approved_date') or None,
-            }
-            product = _resolve_product(base_key, map_row, product_id=ui_row['product_id'])
-        else:
-            map_row = excel_mapping.get(base_key)
-            product = _resolve_product(base_key, map_row)
+        product = Product.objects.filter(pk=ui_row.get('product_id')).first() if ui_row else None
         if not product:
-            unmatched.append(f'{base_key} (품목 미매칭 — 화면에서 품목을 선택하거나 엑셀 매핑표에 품목코드·품목명을 지정하세요)')
+            unmatched.append(f'{base_key} (품목 미매칭 — 화면에서 품목을 선택하세요)')
             continue
 
+        note = ui_row.get('note', '').strip() or '일괄 업로드'
         pkg = PackagingFile.objects.create(
             product=product, ai_file=ai_file, jpg_file=jpg_file, uploaded_by=request.user,
-            note=(map_row['note'] if map_row else '') or '일괄 이관 업로드',
-            is_bulk_upload=True,
+            note=note, is_bulk_upload=True,
         )
-        if map_row and map_row.get('approver'):
-            approved_at = None
-            raw_date = map_row.get('approved_date')
-            if isinstance(raw_date, datetime):
-                approved_at = raw_date
-            elif raw_date:
-                try:
-                    approved_at = datetime.strptime(str(raw_date), '%Y-%m-%d')
-                except ValueError:
-                    approved_at = None
-            pkg.approve(request.user)
-            if approved_at:
-                if timezone.is_naive(approved_at):
-                    approved_at = timezone.make_aware(approved_at)
-                pkg.approved_at = approved_at
-            pkg.note = f"{pkg.note} · 원 승인자: {map_row['approver']}"
-            pkg.save(update_fields=['approved_at', 'note'])
+
+        approver = ui_row.get('approver', '').strip()
+        raw_date = ui_row.get('approved_date') or ''
+        approved_at = None
+        if raw_date:
+            try:
+                approved_at = datetime.strptime(raw_date, '%Y-%m-%d')
+            except ValueError:
+                approved_at = None
+        pkg.approve(request.user)
+        if approved_at:
+            if timezone.is_naive(approved_at):
+                approved_at = timezone.make_aware(approved_at)
+            pkg.approved_at = approved_at
+        if approver:
+            pkg.note = f'{pkg.note} · 원 승인자: {approver}'
+        pkg.save(update_fields=['approved_at', 'note'])
 
         # 특정 재발주 건과 연결되지 않는 파일 갱신이라 "완료·취소 이력"에 안 잡히고
         # 나중에 이 버전이 왜 생겼는지 추적할 수 없었다 — 완료 상태의 재발주 건을
