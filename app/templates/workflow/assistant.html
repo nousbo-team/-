@@ -206,6 +206,9 @@
 <p class="chat-hint">
   <strong>Enter</strong>로 전송, <strong>Shift+Enter</strong>로 줄바꿈. 답변은 현재 시스템에 저장된
   데이터를 근거로 생성되니, 중요한 결정 전에는 해당 화면에서 원본을 확인해주세요.
+  {% if user.is_superuser %}
+  · <a href="{% url 'workflow:assistant_diagnostics' %}">연결 진단</a>
+  {% endif %}
 </p>
 
 <script>

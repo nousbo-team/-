@@ -108,6 +108,42 @@ def assistant_ask(request):
 
 
 @login_required
+def assistant_diagnostics(request):
+    """AI 비서 연결 진단(관리자 전용). 화면에 "응답하지 못했습니다"만 뜰 때, 실제 원인이
+    사용량 초과인지·키 문제인지·모델명이 틀린 건지 여기서 바로 확인한다. Render 무료
+    플랜은 Shell도 로그 열람도 불편해서, 진단을 화면으로 끌어올렸다."""
+    if not request.user.is_superuser:
+        raise PermissionDenied('관리자 계정만 사용할 수 있습니다.')
+
+    key = settings.GEMINI_API_KEY
+    ctx = {
+        'key_configured': bool(key),
+        'key_hint': f'{key[:6]}…{key[-4:]}' if len(key) > 12 else ('(설정됨)' if key else '(없음)'),
+        'model': settings.GEMINI_MODEL,
+        'models': None,
+        'models_error': None,
+        'test_answer': None,
+        'test_error': None,
+    }
+
+    if key:
+        try:
+            ctx['models'] = assistant.list_models()
+            ctx['model_ok'] = settings.GEMINI_MODEL in ctx['models']
+        except assistant.AssistantError as e:
+            ctx['models_error'] = str(e)
+
+        # 실제로 한 번 물어봐서 끝까지 동작하는지 확인한다(무료 할당량을 조금 쓴다).
+        if request.method == 'POST':
+            try:
+                ctx['test_answer'] = assistant.ask(request.user, '지금 진행 중인 발주가 몇 건인지 한 문장으로 알려줘.')
+            except assistant.AssistantError as e:
+                ctx['test_error'] = str(e)
+
+    return render(request, 'workflow/assistant_diagnostics.html', ctx)
+
+
+@login_required
 @require_POST
 def assistant_ask_stream(request):
     """스트리밍(SSE) 버전 — 답변이 다 만들어질 때까지 기다리지 않고 생성되는 대로

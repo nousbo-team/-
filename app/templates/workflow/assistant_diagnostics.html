@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}AI 비서 연결 진단 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_assistant %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">관리자 전용</div>
+<h1>AI 비서 연결 진단</h1>
+<p class="subtitle">
+  채팅 화면에 오류가 뜰 때, 실제 원인이 사용량 초과인지·키 문제인지·모델명이 틀린 건지 확인합니다.
+</p>
+
+<div class="card">
+  <table>
+    <tbody>
+      <tr>
+        <th style="width:180px;">API 키</th>
+        <td>
+          {% if key_configured %}
+          <span class="pill pill-completed">설정됨</span> <code>{{ key_hint }}</code>
+          {% else %}
+          <span class="pill pill-rejected">없음</span>
+          Render 대시보드 → Environment에 <code>GEMINI_API_KEY</code>를 추가해주세요.
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>설정된 모델</th>
+        <td>
+          <code>{{ model }}</code>
+          {% if models %}
+            {% if model_ok %}
+            <span class="pill pill-completed">사용 가능</span>
+            {% else %}
+            <span class="pill pill-rejected">이 키로 쓸 수 없는 모델명</span>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% if models_error %}
+<div class="card">
+  <h2 style="margin-top:0;">모델 목록을 가져오지 못했습니다</h2>
+  <p style="font-size:13.5px;color:var(--danger);margin:0;">{{ models_error }}</p>
+</div>
+{% endif %}
+
+{% if models %}
+<div class="card">
+  <h2 style="margin-top:0;">이 키로 사용 가능한 모델 ({{ models|length }}개)</h2>
+  {% if not model_ok %}
+  <p style="font-size:13.5px;color:var(--danger);">
+    현재 설정된 <code>{{ model }}</code>은 이 목록에 없습니다 — 아래 목록의 이름 중 하나로
+    Render의 <code>GEMINI_MODEL</code> 환경변수를 바꿔주세요.
+  </p>
+  {% endif %}
+  <div class="table-scroll" style="max-height:260px;overflow-y:auto;">
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;">
+      {% for m in models %}
+      <li><code>{{ m }}</code>{% if m == model %} ← 현재 설정{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if key_configured %}
+<div class="card">
+  <h2 style="margin-top:0;">실제 호출 테스트</h2>
+  <p style="font-size:13.5px;color:var(--ink-soft);">
+    실제로 질문을 한 번 보내 끝까지 동작하는지 확인합니다(무료 사용량을 조금 사용합니다).
+  </p>
+  {% if test_answer %}
+  <div class="callout" style="background:var(--accent-soft);padding:12px 14px;border-radius:8px;margin-bottom:12px;">
+    <strong>성공</strong>
+    <p style="margin:6px 0 0;font-size:13.5px;">{{ test_answer }}</p>
+  </div>
+  {% endif %}
+  {% if test_error %}
+  <div class="callout" style="background:var(--danger-soft);padding:12px 14px;border-radius:8px;margin-bottom:12px;">
+    <strong style="color:var(--danger);">실패</strong>
+    <p style="margin:6px 0 0;font-size:13.5px;color:var(--danger);">{{ test_error }}</p>
+  </div>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">지금 테스트 호출하기</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="margin-top:0;">오류 메시지별 대처</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>화면에 뜨는 메시지</th><th>원인</th><th>대처</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>무료 사용량이 잠시 한도를 넘었습니다</td>
+          <td>분당/일일 무료 호출 한도 초과</td>
+          <td>1~2분 뒤 재시도. 자주 반복되면 유료 전환 검토</td>
+        </tr>
+        <tr>
+          <td>API 키가 유효하지 않거나 권한이 없습니다</td>
+          <td>키가 만료·삭제되었거나 제한 설정됨</td>
+          <td>AI Studio에서 키 재발급 후 Render 환경변수 교체</td>
+        </tr>
+        <tr>
+          <td>모델을 찾을 수 없습니다</td>
+          <td><code>GEMINI_MODEL</code> 이름이 잘못됨</td>
+          <td>위 "사용 가능한 모델" 목록의 이름으로 교체</td>
+        </tr>
+        <tr>
+          <td>AI 서비스가 일시적으로 불안정합니다</td>
+          <td>구글 쪽 일시 장애(5xx)</td>
+          <td>자동으로 한 번 재시도함. 계속되면 잠시 후 이용</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p style="margin-top:18px;">
+  <a href="{% url 'workflow:assistant' %}">← AI 비서로 돌아가기</a>
+</p>
+{% endblock %}

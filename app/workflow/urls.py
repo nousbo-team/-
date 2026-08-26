@@ -17,6 +17,7 @@ urlpatterns = [
     path('assistant/', views.assistant_page, name='assistant'),
     path('assistant/ask/', views.assistant_ask, name='assistant_ask'),
     path('assistant/ask/stream/', views.assistant_ask_stream, name='assistant_ask_stream'),
+    path('assistant/diagnostics/', views.assistant_diagnostics, name='assistant_diagnostics'),
     path('bulk/', views_bulk.bulk_home, name='bulk'),
     path('bulk/history/', views_bulk.bulk_upload_history, name='bulk_upload_history'),
     path('bulk/upload/', views_bulk.bulk_upload, name='bulk_upload'),

@@ -427,18 +427,105 @@ class AssistantTestCase(TestCase):
             status_code = 500
             text = 'boom'
 
+            def json(self):
+                return {'error': {'code': 500, 'status': 'INTERNAL', 'message': 'boom'}}
+
             def close(self):
                 pass
 
         with self.settings(GEMINI_API_KEY='fake-key-for-test'):
-            with mock.patch('workflow.assistant.requests.post', return_value=_FakeErrorResponse()):
-                resp = self.client.post(
-                    '/assistant/ask/stream/', data=json.dumps({'question': '상태 알려줘'}),
-                    content_type='application/json')
-                body = b''.join(resp.streaming_content).decode()
+            with mock.patch('workflow.assistant._RETRY_DELAY_SECONDS', 0):
+                with mock.patch('workflow.assistant.requests.post', return_value=_FakeErrorResponse()):
+                    resp = self.client.post(
+                        '/assistant/ask/stream/', data=json.dumps({'question': '상태 알려줘'}),
+                        content_type='application/json')
+                    body = b''.join(resp.streaming_content).decode()
 
         self.assertEqual(resp.status_code, 200)
         self.assertIn('error', body)
+
+    def test_error_messages_name_the_actual_cause(self):
+        """실패 원인별로 다른 안내가 나와야 한다 — 전부 "응답하지 못했습니다"로 뭉뚱그리면
+        사용량 초과인지 설정 문제인지 아무도 구분할 수 없다."""
+        cases = [
+            (429, 'RESOURCE_EXHAUSTED', '사용량'),
+            (403, 'PERMISSION_DENIED', 'API 키'),
+            (404, 'NOT_FOUND', '모델'),
+        ]
+        for code, status, expected in cases:
+            class _FakeResponse:
+                status_code = code
+                text = status
+
+                def json(self):
+                    return {'error': {'code': code, 'status': status, 'message': 'nope'}}
+
+                def close(self):
+                    pass
+
+            with self.subTest(code=code):
+                with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+                    with mock.patch('workflow.assistant.requests.post', return_value=_FakeResponse()):
+                        with self.assertRaises(assistant.AssistantError) as cm:
+                            list(assistant.ask_stream(self.user, '질문'))
+                self.assertIn(expected, str(cm.exception))
+
+    def test_transient_server_error_is_retried_once(self):
+        """구글 쪽 일시 장애(503)는 사용자에게 오류를 보이기 전에 조용히 한 번 더 시도한다."""
+        class _Fake503:
+            status_code = 503
+            text = 'unavailable'
+
+            def json(self):
+                return {'error': {'code': 503, 'status': 'UNAVAILABLE', 'message': 'try again'}}
+
+            def close(self):
+                pass
+
+        class _FakeOk:
+            status_code = 200
+
+            def iter_lines(self, decode_unicode=False):
+                body = {'candidates': [{'content': {'parts': [{'text': '재시도 성공'}]}}]}
+                return iter([('data: ' + json.dumps(body, ensure_ascii=False)).encode('utf-8')])
+
+            def close(self):
+                pass
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            with mock.patch('workflow.assistant._RETRY_DELAY_SECONDS', 0):
+                with mock.patch('workflow.assistant.requests.post',
+                                side_effect=[_Fake503(), _FakeOk()]) as post:
+                    chunks = list(assistant.ask_stream(self.user, '질문'))
+
+        self.assertEqual(chunks, ['재시도 성공'])
+        self.assertEqual(post.call_count, 2)
+
+    def test_diagnostics_page_is_superuser_only(self):
+        resp = self.client.get('/assistant/diagnostics/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_diagnostics_page_lists_models_for_superuser(self):
+        admin = User.objects.create_user('assistant_admin', password='x', is_superuser=True, is_staff=True)
+        self.client.force_login(admin)
+
+        class _FakeModelsResponse:
+            status_code = 200
+
+            def json(self):
+                return {'models': [
+                    {'name': 'models/gemini-3.7-flash', 'supportedGenerationMethods': ['generateContent']},
+                    {'name': 'models/embedding-001', 'supportedGenerationMethods': ['embedContent']},
+                ]}
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test', GEMINI_MODEL='gemini-3.7-flash'):
+            with mock.patch('workflow.assistant.requests.get', return_value=_FakeModelsResponse()):
+                resp = self.client.get('/assistant/diagnostics/')
+
+        self.assertEqual(resp.status_code, 200)
+        # generateContent를 지원하는 모델만 목록에 남아야 한다.
+        self.assertEqual(resp.context['models'], ['gemini-3.7-flash'])
+        self.assertTrue(resp.context['model_ok'])
 
     def test_stream_retries_without_thinking_config_on_400(self):
         """thinkingConfig를 모르는 모델이 400을 주면, 그 옵션만 빼고 한 번 더 시도한다."""

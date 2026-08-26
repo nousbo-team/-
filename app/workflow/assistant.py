@@ -11,6 +11,7 @@ settings.GEMINI_API_KEY가 비어 있으면 이 기능 자체가 화면(nav)에 
 """
 import json
 import logging
+import time
 
 import requests
 from django.conf import settings
@@ -25,6 +26,7 @@ logger = logging.getLogger('workflow.assistant')
 GEMINI_ENDPOINT_TMPL = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 GEMINI_STREAM_ENDPOINT_TMPL = (
     'https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse')
+GEMINI_MODELS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 # Gemini에 한 번에 넘기는 발주 건 수 제한 — 컨텍스트가 길수록 응답이 느려지고 요금도
 # 늘어난다. 화면에서 실제로 물어보는 건 대개 최근 건이라 이 정도면 충분하다.
@@ -34,6 +36,9 @@ _MAX_ROWS = 40
 _MAX_DETAIL_CHARS = 80
 # 대화 맥락은 최근 몇 턴만 — 앞선 대화 전체를 매번 다시 보내면 갈수록 느려진다.
 _MAX_HISTORY_TURNS = 6
+# 구글 쪽 일시 장애(5xx)일 때 조용히 한 번 더 시도하기까지 기다리는 시간. 사용자가 화면
+# 앞에서 기다리는 중이라 길게 둘 수 없다.
+_RETRY_DELAY_SECONDS = 1.0
 
 
 class AssistantError(Exception):
@@ -148,6 +153,65 @@ def _extract_text(data):
     return ''.join(p.get('text', '') for p in parts if isinstance(p, dict))
 
 
+def _gemini_error_detail(resp):
+    """Gemini 오류 응답 본문에서 실제 사유를 뽑는다 — 형식은
+    {"error": {"code": 429, "message": "...", "status": "RESOURCE_EXHAUSTED"}}."""
+    try:
+        err = resp.json().get('error', {})
+        return (err.get('status') or ''), (err.get('message') or '')
+    except ValueError:
+        return '', (resp.text or '')[:300]
+
+
+def _describe_failure(resp):
+    """상태코드별로 "무엇을 해야 하는지"가 드러나는 안내 문구를 만든다.
+
+    전에는 어떤 실패든 "AI 비서가 응답하지 못했습니다"로만 보여서, 사용량 초과인지
+    설정이 틀린 건지 일시 장애인지 아무도 구분할 수 없었다 — 원인별로 다르게 알린다."""
+    status, message = _gemini_error_detail(resp)
+    code = resp.status_code
+    logger.error('Gemini 오류: HTTP %s / %s / %s', code, status, message[:400])
+
+    if code == 429:
+        return ('AI 비서 무료 사용량이 잠시 한도를 넘었습니다. 1~2분 뒤에 다시 시도해주세요. '
+                '(계속 반복되면 관리자에게 알려주세요)')
+    if code in (401, 403):
+        return ('AI 비서 API 키가 유효하지 않거나 권한이 없습니다 — 관리자 확인이 필요합니다. '
+                f'(사유: {status or code})')
+    if code == 404:
+        return (f'설정된 AI 모델("{settings.GEMINI_MODEL}")을 찾을 수 없습니다 — '
+                '관리자 확인이 필요합니다.')
+    if code == 400:
+        return f'AI 비서 요청이 거부되었습니다 — 관리자 확인이 필요합니다. (사유: {message[:120] or status})'
+    if code >= 500:
+        return 'AI 서비스가 일시적으로 불안정합니다. 잠시 후 다시 시도해주세요.'
+    return f'AI 비서가 응답하지 못했습니다. (HTTP {code})'
+
+
+def _is_transient(status_code):
+    """다시 시도하면 풀릴 가능성이 높은 실패 — 구글 쪽 일시 장애. 429(사용량 초과)는
+    분당 한도라 곧바로 재시도해도 또 막히므로 여기 넣지 않고 안내만 한다."""
+    return status_code in (500, 502, 503, 504)
+
+
+def list_models():
+    """관리자 진단용 — 이 API 키로 실제로 쓸 수 있는 모델 목록을 가져온다.
+    설정한 모델명이 틀렸는지 확인하는 가장 확실한 방법이다."""
+    api_key = _require_key()
+    try:
+        resp = requests.get(GEMINI_MODELS_ENDPOINT, timeout=15, headers=_headers(api_key))
+    except requests.RequestException as e:
+        raise AssistantError(f'모델 목록 조회 실패: {e}')
+    if resp.status_code != 200:
+        status, message = _gemini_error_detail(resp)
+        raise AssistantError(f'모델 목록 조회 실패 (HTTP {resp.status_code} {status}): {message[:200]}')
+    names = []
+    for m in resp.json().get('models', []):
+        if 'generateContent' in (m.get('supportedGenerationMethods') or []):
+            names.append((m.get('name') or '').replace('models/', ''))
+    return sorted(names)
+
+
 def ask(user, question, history=None):
     """question에 대한 답 전체를 한 번에 받아 문자열로 반환한다(비스트리밍).
     history는 [{'role': 'user'|'model', 'text': '...'}, ...] 형태의 이전 대화(선택)."""
@@ -164,13 +228,18 @@ def ask(user, question, history=None):
             retry = _strip_thinking_config(payload)
             if retry is not None:
                 resp = _post(retry)
+        if _is_transient(resp.status_code):
+            time.sleep(_RETRY_DELAY_SECONDS)
+            resp = _post(payload)
+    except requests.Timeout:
+        logger.exception('Gemini API 응답 지연')
+        raise AssistantError('AI 비서 응답이 너무 오래 걸립니다. 잠시 후 다시 시도해주세요.')
     except requests.RequestException:
         logger.exception('Gemini API 호출 실패')
-        raise AssistantError('AI 비서 서버 호출 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        raise AssistantError('AI 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.')
 
     if resp.status_code != 200:
-        logger.error('Gemini API 오류 응답: %s %s', resp.status_code, resp.text[:500])
-        raise AssistantError('AI 비서가 응답하지 못했습니다. 잠시 후 다시 시도해주세요.')
+        raise AssistantError(_describe_failure(resp))
 
     text = _extract_text(resp.json())
     if not text.strip():
@@ -197,14 +266,22 @@ def ask_stream(user, question, history=None):
             if retry is not None:
                 resp.close()
                 resp = _post(retry)
+        # 아직 한 글자도 내보내기 전이라 조용히 다시 시도해도 사용자는 눈치채지 못한다.
+        if _is_transient(resp.status_code):
+            resp.close()
+            time.sleep(_RETRY_DELAY_SECONDS)
+            resp = _post(payload)
+    except requests.Timeout:
+        logger.exception('Gemini 스트리밍 응답 지연')
+        raise AssistantError('AI 비서 응답이 너무 오래 걸립니다. 잠시 후 다시 시도해주세요.')
     except requests.RequestException:
         logger.exception('Gemini 스트리밍 호출 실패')
-        raise AssistantError('AI 비서 서버 호출 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        raise AssistantError('AI 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.')
 
     if resp.status_code != 200:
-        logger.error('Gemini 스트리밍 오류 응답: %s %s', resp.status_code, resp.text[:500])
+        detail = _describe_failure(resp)
         resp.close()
-        raise AssistantError('AI 비서가 응답하지 못했습니다. 잠시 후 다시 시도해주세요.')
+        raise AssistantError(detail)
 
     sent_any = False
     try:
