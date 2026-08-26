@@ -65,3 +65,7 @@ services:
         sync: false
       - key: VAPID_CLAIM_EMAIL
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false

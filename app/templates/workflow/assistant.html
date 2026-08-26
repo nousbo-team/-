@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}AI 비서 · 누보 포장지 발주관리 시스템{% endblock %}
+{% block nav_assistant %}active{% endblock %}
+{% block content %}
+<div class="eyebrow">AI 비서 (베타)</div>
+<h1>AI 비서</h1>
+<p class="subtitle">
+  현재 화면에서 볼 수 있는 발주 건·이력·파일 현황 안에서만 답합니다. 조회 전용이며,
+  승인·취소 등은 여기서 처리되지 않습니다 — 대시보드/발주요청 화면에서 직접 진행해주세요.
+</p>
+
+<div class="card">
+  {% if assistant_disabled %}
+  <div class="empty-state">AI 비서 기능이 아직 설정되지 않았습니다(관리자에게 문의하세요).</div>
+  {% else %}
+  <div id="chat-log" class="chat-log" aria-live="polite">
+    <div class="chat-msg chat-msg-model">
+      안녕하세요! 발주 건 현황, 진행 상태, 파일 등을 물어보세요. 예: "내가 올린 발주 중 아직 안 끝난 게 뭐야?"
+    </div>
+  </div>
+  <form id="chat-form" class="chat-form">
+    {% csrf_token %}
+    <textarea id="chat-input" rows="2" placeholder="질문을 입력하세요" required></textarea>
+    <button type="submit" class="btn btn-primary" id="chat-send">보내기</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not assistant_disabled %}
+<style>
+.chat-log { display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto; padding: 4px 2px 12px; }
+.chat-msg { max-width: 80%; padding: 10px 13px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+.chat-msg-user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+.chat-msg-model { align-self: flex-start; background: var(--accent-soft); color: var(--accent-ink); border-bottom-left-radius: 3px; }
+.chat-msg-error { align-self: flex-start; background: #fdecea; color: #9b2c2c; border-bottom-left-radius: 3px; }
+.chat-form { display: flex; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
+.chat-form textarea {
+  flex: 1; resize: none; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  font-family: var(--font); font-size: 13.5px; color: var(--ink); background: #fff;
+}
+.chat-form .btn { align-self: flex-end; }
+</style>
+<script>
+(function () {
+  var log = document.getElementById('chat-log');
+  var form = document.getElementById('chat-form');
+  var input = document.getElementById('chat-input');
+  var sendBtn = document.getElementById('chat-send');
+  var history = [];
+
+  function getCsrfToken() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+  function appendMessage(text, cls) {
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + cls;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var question = input.value.trim();
+    if (!question) return;
+    appendMessage(question, 'chat-msg-user');
+    history.push({ role: 'user', text: question });
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    var pending = appendMessage('생각하는 중…', 'chat-msg-model');
+
+    fetch('{% url "workflow:assistant_ask" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify({ question: question, history: history.slice(0, -1) }),
+    }).then(function (res) { return res.json(); }).then(function (data) {
+      if (data.ok) {
+        pending.textContent = data.answer;
+        history.push({ role: 'model', text: data.answer });
+      } else {
+        pending.className = 'chat-msg chat-msg-error';
+        pending.textContent = data.error || 'AI 비서가 응답하지 못했습니다.';
+        history.pop();
+      }
+    }).catch(function () {
+      pending.className = 'chat-msg chat-msg-error';
+      pending.textContent = '네트워크 오류로 응답을 받지 못했습니다.';
+      history.pop();
+    }).finally(function () {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

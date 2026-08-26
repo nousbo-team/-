@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -13,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.models import UserProfile, get_profile
 
-from . import services
+from . import assistant, services
 from .forms import DesignUploadForm, NewRequestForm
 from .models import PushSubscription, ReorderRequest, RequestEvent
 
@@ -72,6 +73,38 @@ def push_unsubscribe(request):
         data = {}
     PushSubscription.objects.filter(endpoint=data.get('endpoint', '')).delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+def assistant_page(request):
+    """AI 비서 채팅 화면. GEMINI_API_KEY가 없으면 안내만 보여준다(질문 전송 자체를
+    막아, 어차피 실패할 호출을 시도하지 않게 한다)."""
+    if not settings.GEMINI_API_KEY:
+        return render(request, 'workflow/assistant.html', {'assistant_disabled': True})
+    return render(request, 'workflow/assistant.html', {'assistant_disabled': False})
+
+
+@login_required
+@require_POST
+def assistant_ask(request):
+    """채팅 화면의 fetch() 호출 대상. {question, history} JSON을 받아 {answer} JSON을
+    반환한다 — 조회 전용이라 DB를 바꾸지 않는다(assistant.ask 참고)."""
+    try:
+        data = json.loads(request.body)
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': '요청 형식이 올바르지 않습니다.'}, status=400)
+
+    question = (data.get('question') or '').strip()
+    if not question:
+        return JsonResponse({'ok': False, 'error': '질문을 입력해주세요.'}, status=400)
+    history = data.get('history') or []
+
+    try:
+        answer = assistant.ask(request.user, question, history=history)
+    except assistant.AssistantError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=502)
+
+    return JsonResponse({'ok': True, 'answer': answer})
 
 
 @login_required

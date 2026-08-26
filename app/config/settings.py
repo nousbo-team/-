@@ -71,6 +71,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'workflow.context_processors.unread_notifications',
                 'workflow.context_processors.web_push',
+                'workflow.context_processors.ai_assistant',
             ],
         },
     },
@@ -234,6 +235,11 @@ KAKAO_TEMPLATE_ID = os.environ.get('KAKAO_TEMPLATE_ID', '')  # 승인된 알림�
 VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:noreply@nousbo.com')
+
+# AI 비서(채팅으로 발주 현황·이력·파일을 물어보는 기능) — 구글 Gemini API 무료 티어 사용.
+# GEMINI_API_KEY가 없으면 화면(nav)에 링크 자체가 나타나지 않는다(설정 없이도 앱은 정상 동작).
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.7-flash')
 
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)

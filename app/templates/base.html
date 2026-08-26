@@ -30,6 +30,9 @@
       <a href="{% url 'workflow:history' %}" class="{% block nav_history %}{% endblock %}">완료·취소 이력</a>
       <a href="{% url 'catalog:product_list' %}" class="{% block nav_catalog %}{% endblock %}">품목·파일</a>
       <a href="{% url 'workflow:bulk' %}" class="{% block nav_bulk %}{% endblock %}">일괄 업로드/다운로드</a>
+      {% if ai_assistant_enabled %}
+      <a href="{% url 'workflow:assistant' %}" class="{% block nav_assistant %}{% endblock %}">AI 비서</a>
+      {% endif %}
       <a href="{% url 'workflow:notifications' %}" class="{% block nav_notify %}{% endblock %}">
         알림함{% if unread_notification_count %} <span class="badge-count">{{ unread_notification_count }}</span>{% endif %}
       </a>

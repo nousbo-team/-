@@ -1,4 +1,6 @@
 import io
+import json
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -9,7 +11,7 @@ from datetime import timedelta
 from accounts.models import UserProfile
 from catalog.models import PackagingFile, Product
 
-from . import services
+from . import assistant, services
 from .models import ReorderRequest
 
 User = get_user_model()
@@ -324,3 +326,59 @@ class NoProfileAccountTestCase(TestCase):
             reason=ReorderRequest.Reason.STOCK_SHORTAGE, status=ReorderRequest.Status.REVIEW1)
         resp = self.client.get(f'/requests/{req.pk}/')
         self.assertEqual(resp.status_code, 200)
+
+
+class AssistantTestCase(TestCase):
+    """AI 비서(assistant.py) — 실제 Gemini API를 호출하지 않고 requests.post를
+    모의(mock) 처리해 검증한다(요금이 드는 외부 호출은 테스트에서 절대 하지 않음)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('assistant_tester', password='x')
+        UserProfile.objects.create(user=self.user, role=UserProfile.Role.REQUESTER)
+        self.product = Product.objects.create(
+            code='AS-0001', name='비서테스트 품목', category=Product.Category.LABEL,
+            product_line=Product.ProductLine.FERTILIZER)
+        self.client.login(username='assistant_tester', password='x')
+
+    def test_assistant_page_shows_disabled_state_without_api_key(self):
+        with self.settings(GEMINI_API_KEY=''):
+            resp = self.client.get('/assistant/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['assistant_disabled'])
+
+    def test_ask_without_api_key_raises(self):
+        with self.settings(GEMINI_API_KEY=''):
+            with self.assertRaises(assistant.AssistantError):
+                assistant.ask(self.user, '테스트 질문')
+
+    def test_ask_view_returns_answer_from_mocked_gemini(self):
+        req = ReorderRequest.objects.create(
+            request_no='RQ-TEST-AS-001', product=self.product, requester=self.user,
+            reason=ReorderRequest.Reason.STOCK_SHORTAGE, status=ReorderRequest.Status.REVIEW1)
+
+        class _FakeResponse:
+            status_code = 200
+
+            def json(self):
+                return {'candidates': [{'content': {'parts': [{'text': f'{req.request_no} 건이 검토중입니다.'}]}}]}
+
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            with mock.patch('workflow.assistant.requests.post', return_value=_FakeResponse()) as post:
+                resp = self.client.post(
+                    '/assistant/ask/', data=json.dumps({'question': '내 발주 상태 알려줘'}),
+                    content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertTrue(payload['ok'])
+        self.assertIn(req.request_no, payload['answer'])
+        # 컨텍스트에 이 요청번호가 실제로 담겨 Gemini에 전달됐는지도 확인.
+        sent_payload = post.call_args.kwargs['json']
+        sent_text = sent_payload['contents'][-1]['parts'][0]['text']
+        self.assertIn(req.request_no, sent_text)
+
+    def test_ask_view_rejects_empty_question(self):
+        with self.settings(GEMINI_API_KEY='fake-key-for-test'):
+            resp = self.client.post(
+                '/assistant/ask/', data=json.dumps({'question': '  '}),
+                content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
