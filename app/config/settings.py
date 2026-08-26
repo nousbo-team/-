@@ -238,8 +238,12 @@ VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:noreply@nousbo.c
 
 # AI 비서(채팅으로 발주 현황·이력·파일을 물어보는 기능) — 구글 Gemini API 무료 티어 사용.
 # GEMINI_API_KEY가 없으면 화면(nav)에 링크 자체가 나타나지 않는다(설정 없이도 앱은 정상 동작).
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.7-flash')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+# render.yaml에 sync:false로 선언된 변수는 대시보드에서 값을 안 채우면 "빈 문자열"로
+# 존재할 수 있다 — 이때 get(키, 기본값)은 기본값이 아니라 ''를 돌려주고, 그대로 두면
+# 요청 URL이 .../models/:generateContent 가 되어 매번 404가 난다. or로 받아 빈 값도
+# 기본 모델로 되돌린다.
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', '').strip() or 'gemini-3.7-flash'
 
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
@@ -262,6 +266,21 @@ LOGGING = {
     'loggers': {
         'workflow.notify': {
             'handlers': ['console', 'notify_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Django 기본 설정은 django.request의 콘솔 출력을 require_debug_true로 걸러서,
+        # 운영(DEBUG=False)에서는 500 오류의 트레이스백이 아무 데도 남지 않는다 —
+        # 화면에는 "Internal Server Error"만 뜨고 원인은 사라진다. 명시적으로 콘솔에
+        # 남겨서 Render 대시보드 Logs 탭에서 그대로 확인할 수 있게 한다.
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # AI 비서가 Gemini에서 받은 실제 오류(사용량 초과/키/모델명)도 같은 곳에 남긴다.
+        'workflow.assistant': {
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
