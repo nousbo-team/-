@@ -33,8 +33,8 @@
           {% if req.current_file.status == 'FINAL_APPROVED' %}<span class="pill pill-final">최종 승인본</span>
           {% else %}<span class="pill pill-review1">{{ req.current_file.get_status_display }}</span>{% endif %}
           <div class="actions-row">
-            <a class="btn" href="{{ req.current_file.ai_file.url }}" download="{{ req.current_file.ai_display_filename }}" target="_blank" rel="noopener">AI 다운로드</a>
-            <a class="btn" href="{{ req.current_file.jpg_file.url }}" download="{{ req.current_file.jpg_display_filename }}" target="_blank" rel="noopener">{% if req.current_file.is_pdf %}PDF{% else %}JPG{% endif %} 다운로드</a>
+            <a class="btn" href="{% url 'catalog:download_packaging_file' req.current_file.pk 'ai' %}">AI 다운로드</a>
+            <a class="btn" href="{% url 'catalog:download_packaging_file' req.current_file.pk 'jpg' %}">{% if req.current_file.is_pdf %}PDF{% else %}JPG{% endif %} 다운로드</a>
             <a class="btn btn-ghost" href="{% url 'catalog:product_detail' req.product.pk %}">전체 버전 이력 보기</a>
           </div>
         </div>
@@ -166,7 +166,7 @@
 
             {% if e.attachment %}
             <div style="margin-top:4px;">
-              <a class="btn btn-ghost" href="{{ e.attachment.url }}" download="{{ e.attachment_filename }}" target="_blank" rel="noopener" style="padding:3px 9px;font-size:12px;">
+              <a class="btn btn-ghost" href="{% url 'workflow:download_attachment' e.pk %}" style="padding:3px 9px;font-size:12px;">
                 📎 참고 파일 다운로드 ({{ e.attachment_filename|truncatechars:40 }})
               </a>
             </div>

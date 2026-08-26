@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.db import models
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -223,6 +223,19 @@ def new_request(request):
     else:
         form = NewRequestForm()
     return render(request, 'workflow/request_new.html', {'form': form})
+
+
+@login_required
+def download_attachment(request, pk):
+    """catalog.views.download_packaging_file과 같은 이유 — 참고 파일 링크를
+    Supabase Storage 서명 URL로 바로 걸면 교차 출처라 브라우저가 <a download="...">
+    을 무시해 한글 파일명이 저장되지 않는다. 이 서버를 거쳐 내려주면 같은 출처가
+    되어 Content-Disposition의 파일명이 그대로 적용된다."""
+    event = get_object_or_404(RequestEvent, pk=pk)
+    if not event.attachment:
+        raise Http404('첨부 파일이 없습니다.')
+    event.attachment.open('rb')
+    return FileResponse(event.attachment, as_attachment=True, filename=event.attachment_filename)
 
 
 @login_required

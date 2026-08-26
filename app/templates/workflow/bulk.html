@@ -7,6 +7,9 @@
 <p class="subtitle">기존 보유 파일 이관이나 다건 인쇄 발주 시, 여러 파일을 한 번에 업로드·다운로드할 수 있습니다.</p>
 
 <h2>일괄 업로드 (이력 포함)</h2>
+<div class="actions-row" style="margin-bottom:8px;">
+  <a class="btn btn-ghost" href="{% url 'workflow:bulk_upload_history' %}">일괄 업로드 이력 보기</a>
+</div>
 <div class="card">
   <form method="post" action="{% url 'workflow:bulk_upload' %}" enctype="multipart/form-data" id="bulk-upload-form">
     {% csrf_token %}
@@ -102,7 +105,7 @@
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<input type="text" class="bulk-approver" placeholder="승인자(선택)" style="' + fieldStyle('flex:1;min-width:100px;') + '">' +
         '<input type="date" class="bulk-approved-date" style="' + fieldStyle('flex:1;min-width:130px;') + '">' +
-        '<input type="text" class="bulk-note" placeholder="비고(선택)" style="' + fieldStyle('flex:2;min-width:140px;') + '">' +
+        '<input type="text" class="bulk-note" placeholder="비고 — 왜 이 버전으로 바뀌는지(필수)" style="' + fieldStyle('flex:2;min-width:140px;') + '" required>' +
         '</div>';
       groupsEl.appendChild(row);
 
@@ -132,18 +135,26 @@
   form.addEventListener('submit', function (e) {
     var mapping = {};
     var missing = [];
+    var missingNote = [];
     Array.prototype.slice.call(groupsEl.querySelectorAll('[data-group-key]')).forEach(function (row) {
       var select = row.querySelector('.bulk-product-select');
       if (!select) return; // 짝이 안 맞아 제외된 묶음
       var key = row.dataset.groupKey;
       if (!select.value) { missing.push(key); return; }
+      var note = row.querySelector('.bulk-note').value.trim();
+      if (!note) { missingNote.push(key); return; }
       mapping[key] = {
         product_id: select.value,
         approver: row.querySelector('.bulk-approver').value.trim(),
         approved_date: row.querySelector('.bulk-approved-date').value,
-        note: row.querySelector('.bulk-note').value.trim(),
+        note: note,
       };
     });
+    if (missingNote.length) {
+      e.preventDefault();
+      alert('다음 파일 묶음에 비고(버전을 바꾸는 이유)를 입력해주세요:\n' + missingNote.join('\n'));
+      return;
+    }
     if (missing.length) {
       e.preventDefault();
       alert('다음 파일 묶음에 품목을 선택해주세요:\n' + missing.join('\n'));

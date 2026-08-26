@@ -4,12 +4,33 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from workflow.models import ReorderRequest
 
 from .forms import ProductMasterImportForm
 from .models import PackagingFile, Product
+
+
+@login_required
+def download_packaging_file(request, pk, field):
+    """AI/이미지·PDF 파일을 Supabase Storage 서명 URL로 직접 링크하면, 브라우저가
+    교차 출처(cross-origin) 리소스에서는 <a download="..."> 지정을 무시해버려 우리가
+    만든 한글 파일명이 아니라 저장소의 랜덤 키 이름으로 저장된다(보안상 브라우저
+    표준 동작 — 이걸 "파일명이 깨진다"고 느끼게 됨). 이 서버를 한 번 거쳐 내려주면
+    같은 출처(same-origin)라 Content-Disposition 헤더의 파일명이 그대로 존중된다."""
+    pf = get_object_or_404(PackagingFile, pk=pk)
+    if field == 'ai':
+        file_field, filename = pf.ai_file, pf.ai_display_filename
+    elif field == 'jpg':
+        file_field, filename = pf.jpg_file, pf.jpg_display_filename
+    else:
+        raise Http404('알 수 없는 파일 종류입니다.')
+    if not file_field:
+        raise Http404('파일이 없습니다.')
+    file_field.open('rb')
+    return FileResponse(file_field, as_attachment=True, filename=filename)
 
 
 @login_required

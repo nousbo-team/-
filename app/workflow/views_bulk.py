@@ -59,6 +59,24 @@ def bulk_home(request):
 
 
 @login_required
+def bulk_upload_history(request):
+    """일괄 업로드는 특정 재발주 건(ReorderRequest)에 매이지 않는 품목 파일 관리라,
+    그 건의 이력(타임라인)에는 남지 않는다 — 나중에 "이 버전이 왜 갑자기 바뀌었는지"
+    추적할 곳이 없어지는 문제가 있어, 일괄 업로드로 등록된 버전만 모아 별도로 보여준다."""
+    q = request.GET.get('q', '').strip()
+    logs = (PackagingFile.objects
+            .filter(is_bulk_upload=True)
+            .select_related('product', 'uploaded_by', 'approved_by')
+            .order_by('-uploaded_at'))
+    if q:
+        logs = logs.filter(Q(product__name__icontains=q) | Q(product__code__icontains=q) | Q(note__icontains=q))
+
+    paginator = Paginator(logs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'workflow/bulk_upload_history.html', {'page_obj': page_obj, 'q': q})
+
+
+@login_required
 def bulk_mapping_template(request):
     """일괄 업로드용 빈 엑셀 매핑표 양식을 다운로드한다(_read_mapping이 읽는 형식과 동일)."""
     wb = openpyxl.Workbook()
@@ -195,6 +213,7 @@ def bulk_upload(request):
         pkg = PackagingFile.objects.create(
             product=product, ai_file=ai_file, jpg_file=jpg_file, uploaded_by=request.user,
             note=(map_row['note'] if map_row else '') or '일괄 이관 업로드',
+            is_bulk_upload=True,
         )
         if map_row and map_row.get('approver'):
             approved_at = None
