@@ -65,8 +65,12 @@ def packaging_upload_to(instance, filename):
 
 class Product(models.Model):
     class Category(models.TextChoices):
-        LABEL = 'LABEL', '병제품 부착 라벨'
-        PP_BAG = 'PP_BAG', 'PP재질 포대 포장재'
+        LABEL = 'LABEL', '롤라벨'
+        PP_BAG = 'PP_BAG', '포장재(PP)'
+        PESTICIDE_LABEL = 'PESTICIDE_LABEL', '농약라벨'
+        SOFT_BAG = 'SOFT_BAG', '소프트백(소량인쇄)'
+        HAND_STICKER = 'HAND_STICKER', '손스티커'
+        GLOSS_BOX = 'GLOSS_BOX', '유광(박스)'
 
     class ProductLine(models.TextChoices):
         FERTILIZER = 'FERTILIZER', '비료'
