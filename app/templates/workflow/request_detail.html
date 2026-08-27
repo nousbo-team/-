@@ -10,7 +10,10 @@
   · 등록 {{ req.created_at|date:'Y-m-d H:i' }}
 </p>
 {% if req.detail %}
-<p class="subtitle" style="margin-top:-8px;">요청사항: {{ req.detail|linebreaksbr }}</p>
+<div class="request-note">
+  <span class="request-note__label">요청사항</span>
+  <p class="request-note__body">{{ req.detail|linebreaksbr }}</p>
+</div>
 {% endif %}
 
 <div class="request-detail-grid">
@@ -175,9 +178,13 @@
           <h3 class="action-panel__title">되돌려 보내기</h3>
           <p class="action-panel__desc">사유를 적고 아래 둘 중 하나를 고르세요. <strong>수정 필요(경미)</strong>는 가벼운 보완, <strong>반려</strong>는 다시 판단이 필요한 경우입니다. 둘 다 1차검토로 돌아갑니다.</p>
         </div>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           <textarea name="reason" class="action-textarea" rows="3" placeholder="사유를 입력하세요 (반려는 필수)"></textarea>
+          <label class="action-file">
+            <span>수정사항 자료 — 표시사항 수정안, 참고 이미지 등 (선택)</span>
+            <input type="file" name="attachment">
+          </label>
           <div class="actions-row" style="margin-top:0;">
             <button class="btn" type="submit" name="action" value="final_revision">수정 필요(경미)</button>
             <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
@@ -199,9 +206,13 @@
         <details class="action-reveal">
           <summary class="btn btn-outline-danger">반려</summary>
           <div class="action-reveal__body">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
               {% csrf_token %}
               <textarea name="reason" class="action-textarea" required rows="2" placeholder="반려 사유 (필수)"></textarea>
+              <label class="action-file">
+                <span>참고 자료 (선택)</span>
+                <input type="file" name="attachment">
+              </label>
               <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려하고 1차검토로 되돌리기</button>
             </form>
           </div>

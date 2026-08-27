@@ -4,6 +4,7 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
@@ -210,6 +211,67 @@ class WorkflowTestCase(TestCase):
         req.current_file.refresh_from_db()
         self.assertEqual(req.current_file.status, PackagingFile.Status.FINAL_APPROVED)
         self.assertEqual(self.product.current_final_file(), req.current_file)
+
+    def test_requester_can_attach_reference_file_when_creating(self):
+        """울산공장이 요청 등록 시 올린 자료가 이력에 남고, 원본 파일명이 보존돼야 한다."""
+        upload = SimpleUploadedFile('표시사항 변경안.pdf', b'%PDF-1.4 fake', content_type='application/pdf')
+        req, existing = services.create_request(
+            self.product, self.requester, ReorderRequest.Reason.NEEDS_REVISION,
+            detail='표시사항 문구 변경', attachment=upload)
+        self.assertIsNone(existing)
+
+        event = req.events.filter(action=RequestEvent.Action.SUBMITTED).first()
+        self.assertTrue(event.attachment)
+        self.assertEqual(event.attachment_original_name, '표시사항 변경안.pdf')
+        self.assertIn('요청사항 참고 파일 첨부됨', event.note)
+        # 다운로드 파일명은 요청번호 기준 규칙을 따른다.
+        self.assertTrue(event.attachment_filename.endswith('.pdf'))
+        self.assertIn(req.request_no, event.attachment_filename)
+
+    def test_create_request_without_attachment_still_works(self):
+        req, _ = services.create_request(
+            self.product, self.requester, ReorderRequest.Reason.STOCK_SHORTAGE, detail='첨부 없음')
+        event = req.events.filter(action=RequestEvent.Action.SUBMITTED).first()
+        self.assertFalse(event.attachment)
+        self.assertNotIn('참고 파일 첨부됨', event.note)
+
+    def test_approver_can_attach_file_when_rejecting(self):
+        """연구소가 반려하며 올린 수정사항 자료가 이력에 남아 다른 담당자에게 공유돼야 한다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+
+        upload = SimpleUploadedFile('수정사항 정리.xlsx', b'xlsx-bytes')
+        services.final_decision(req, self.approver, 'REJECT', reason='표시사항 규정 위반', attachment=upload)
+        req.refresh_from_db()
+
+        self.assertEqual(req.status, ReorderRequest.Status.REVIEW1)
+        event = req.events.filter(action=RequestEvent.Action.FINAL_REJECT).first()
+        self.assertTrue(event.attachment)
+        self.assertEqual(event.attachment_original_name, '수정사항 정리.xlsx')
+
+    def test_reject_attachment_is_downloadable_by_another_role(self):
+        """첨부의 목적은 공유다 — 올린 사람이 아닌 담당자도 받을 수 있어야 한다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.approver, 'REJECT', reason='사유',
+                                attachment=SimpleUploadedFile('공유.txt', b'shared'))
+        event = req.events.filter(action=RequestEvent.Action.FINAL_REJECT).first()
+
+        self.client.force_login(self.reviewer)
+        resp = self.client.get(f'/attachments/{event.pk}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('attachment', resp['Content-Disposition'])
+
+    def test_revision_can_also_carry_attachment(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.approver, 'REVISION', reason='경미 보완',
+                                attachment=SimpleUploadedFile('보완.txt', b'x'))
+        event = req.events.filter(action=RequestEvent.Action.FINAL_REVISION).first()
+        self.assertTrue(event.attachment)
 
     def test_backup_routing_only_active_when_away(self):
         self.assertEqual(services.effective_reviewers(), [self.reviewer])

@@ -16,6 +16,9 @@ class NewRequestForm(forms.Form):
     detail = forms.CharField(
         label='요청사항', required=True,
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '구체적인 요청 내용을 간략히 적어주세요'}))
+    attachment = forms.FileField(
+        label='요청사항 자료 (선택)', required=False,
+        help_text='표시사항 변경안, 참고 이미지, 문서 등을 함께 올리면 이력에 남아 담당자들이 바로 내려받을 수 있습니다.')
 
 
 class DesignUploadForm(forms.Form):

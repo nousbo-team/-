@@ -8,7 +8,7 @@
 <p class="subtitle">품목을 선택하면 현재 등록된 최종 승인본을 박현경 팀장에게 확인 요청합니다.</p>
 
 <div class="card">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="field">
       <label for="id_product">품목 (품목코드 - 품목명)</label>
@@ -24,6 +24,11 @@
     <div class="field">
       <label for="id_detail">요청사항</label>
       {{ form.detail }}
+    </div>
+    <div class="field">
+      <label for="id_attachment">요청사항 자료 (선택)</label>
+      {{ form.attachment }}
+      <div class="hint">{{ form.attachment.help_text }}</div>
     </div>
     <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">요청 등록</button>
   </form>

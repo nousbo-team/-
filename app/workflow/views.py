@@ -310,11 +310,12 @@ def new_request(request):
         return redirect('workflow:dashboard')
 
     if request.method == 'POST':
-        form = NewRequestForm(request.POST)
+        form = NewRequestForm(request.POST, request.FILES)
         if form.is_valid():
             req, existing = services.create_request(
                 form.cleaned_data['product'], request.user, form.cleaned_data['reason'],
-                detail=form.cleaned_data['detail'])
+                detail=form.cleaned_data['detail'],
+                attachment=form.cleaned_data.get('attachment'))
             if existing:
                 messages.warning(
                     request,
@@ -377,11 +378,13 @@ def request_detail(request, pk):
                 messages.success(request, '최종 승인 처리했습니다.')
             elif action == 'final_revision':
                 reason = request.POST.get('reason', '')
-                services.final_decision(req, request.user, 'REVISION', reason=reason)
+                services.final_decision(req, request.user, 'REVISION', reason=reason,
+                                        attachment=request.FILES.get('attachment'))
                 messages.success(request, '수정 필요로 처리했습니다.')
             elif action == 'final_reject':
                 reason = request.POST.get('reason', '')
-                services.final_decision(req, request.user, 'REJECT', reason=reason)
+                services.final_decision(req, request.user, 'REJECT', reason=reason,
+                                        attachment=request.FILES.get('attachment'))
                 messages.success(request, '반려 처리했습니다.')
             elif action == 'handoff':
                 services.handoff(req, request.user)

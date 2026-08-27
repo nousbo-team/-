@@ -129,7 +129,7 @@ def _notify_history(req, message, kakao=False):
     _notify(req, list(participants), message, kakao=kakao)
 
 
-def create_request(product, requester, reason, detail=''):
+def create_request(product, requester, reason, detail='', attachment=None):
     """발주요청 등록(P0-3). 동일 제품에 진행중인 건이 있으면 (None, 기존건)을 반환."""
     existing = product.has_open_request()
     if existing:
@@ -145,7 +145,9 @@ def create_request(product, requester, reason, detail=''):
         note = f'발주요청 등록 ({req.get_reason_display()}) · 최종본 확인 요청'
         if detail.strip():
             note += f'\n요청사항: {detail.strip()}'
-        _log(req, requester, RequestEvent.Action.SUBMITTED, note=note)
+        if attachment:
+            note += '\n(요청사항 참고 파일 첨부됨)'
+        _log(req, requester, RequestEvent.Action.SUBMITTED, note=note, attachment=attachment)
         _notify(req, effective_reviewers(),
                 f'"{product.name}" 발주요청이 등록되었습니다. 최종본 확인이 필요합니다.', kakao=True)
     return req, None
@@ -260,7 +262,7 @@ def design_upload(req, actor, ai_file, jpg_file, note=''):
     return req
 
 
-def final_decision(req, actor, decision, reason=''):
+def final_decision(req, actor, decision, reason='', attachment=None):
     """최종검수(FINAL_REVIEW) 처리. decision: 'APPROVE' | 'REVISION' | 'REJECT'.
 
     반려(REJECT)는 연구소뿐 아니라 1차 검토·관리 창구(브랜드기획팀)도 판단할 수 있다.
@@ -290,10 +292,11 @@ def final_decision(req, actor, decision, reason=''):
             req.status = ReorderRequest.Status.REVIEW1
             req.save(update_fields=['status', 'updated_at'])
             action = RequestEvent.Action.FINAL_REJECT if decision == 'REJECT' else RequestEvent.Action.FINAL_REVISION
-            _log(req, actor, action, note=reason)
+            _log(req, actor, action, note=reason, attachment=attachment)
             label = '반려' if decision == 'REJECT' else '수정 필요(경미)'
+            attach_note = ' (수정사항 참고 파일 첨부됨)' if attachment else ''
             _notify(req, effective_reviewers(),
-                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}', kakao=True)
+                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}{attach_note}', kakao=True)
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
     return req
