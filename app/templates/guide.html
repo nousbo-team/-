@@ -379,7 +379,7 @@
             <text x="806" y="153" font-size="10.5" stroke="none" fill="currentColor">전달 완료</text>
           </g>
         </svg>
-        <figcaption>발주 건의 상태 흐름. 문제가 발견되면 1차검토중·최종검수중 두 지점에서 화살표를 따라 이전 단계로 되돌아가며, 되돌아간 사실은 그 건을 거쳐간 담당자 전원에게 알림으로 전달됩니다.</figcaption>
+        <figcaption>발주 건의 상태 흐름. 문제가 발견되면 1차검토중·최종검수중 두 지점에서 화살표를 따라 이전 단계로 되돌아가며, 되돌아간 사실은 그 건을 거쳐간 담당자 전원에게 알림으로 전달됩니다. 이 그림에 없는 지름길이 하나 더 있습니다 — 브랜드기획팀은 1차검토중 건을 <strong>연구소 검수 없이 바로 완료</strong>로 보낼 수 있으며(사유 필수), 이때도 연구소에 통보됩니다.</figcaption>
       </figure>
 
       <div class="grid-2" style="margin-top:24px;">
@@ -411,8 +411,8 @@
         <li>
           <h3>로그인 후 대시보드 확인</h3>
           <p>로그인하면 바로 대시보드가 뜨고, 내가 등록한 모든 요청이 <strong>요청번호·품목·사유·상태·등록일</strong> 순서로 표에 나열됩니다.</p>
-          <div class="note">상태 배지 읽는 법 — <span class="pill pill-review1">1차검토중</span> 검토 대기 · <span class="pill pill-design">디자인수정중</span> 수정 진행 중 · <span class="pill pill-warn">최종검수중</span> 연구소 검수 대기 · <span class="pill pill-final">완료</span> 전달까지 끝남 · <span class="pill pill-done">취소됨</span> 중단된 건</div>
-          <div class="note">상태 옆 <strong>"진행 흐름"</strong> 열에 1차검토 → 최종검수 → 전달대기 → 완료 점이 표시되어, 배지 문구를 안 읽어도 지금 어느 단계인지 한눈에 보입니다.</div>
+          <div class="note">대시보드의 <strong>상태</strong> 칸은 글자 없이 <strong>색 막대</strong>로 표시됩니다 — <strong>진초록</strong> 1차검토중 · <strong>주황</strong> 디자인수정중 · <strong>파랑</strong> 최종검수중 · <strong>밝은 초록</strong> 전달대기. 막대에 마우스를 올리면 상태명이 뜨고, 휴대폰에서는 글자로 바뀝니다.</div>
+          <div class="note">그 옆 <strong>"진행 흐름"</strong> 열에 <strong>요청접수 → 내부확인 → 디자인수정 → 최종검수 → 전달대기 → 완료</strong> 6단계가 표시되고, 흐름 아래 <strong>"▸ ○○ 처리 대기"</strong>로 지금 누구 차례인지 바로 알 수 있습니다.</div>
           <div class="note">대시보드에는 <strong>진행 중인 건만</strong> 표시됩니다. 완료되거나 취소된 건은 목록이 계속 길어지지 않도록 자동으로 빠지며, 상단 <strong>"완료·취소 이력"</strong> 메뉴에서 요청번호·품목명으로 검색해 언제든 다시 찾아볼 수 있습니다.</div>
         </li>
         <li>
@@ -429,7 +429,7 @@
         </li>
         <li>
           <h3>필요하면 요청 취소</h3>
-          <p>완료되기 전이라면 언제든 대시보드나 상세 페이지의 <strong>"요청 취소"</strong> 버튼으로 직접 취소할 수 있습니다. 클릭하면 사유를 묻는 창이 뜨며, 사유를 입력해야만 취소가 처리됩니다.</p>
+          <p>완료되기 전이라면 언제든 취소할 수 있습니다. 목록에서 <strong>요청번호를 눌러 상세 페이지</strong>로 들어간 뒤, 맨 아래 붉은 <strong>"요청 취소"</strong> 버튼을 누르면 사유 입력란이 펼쳐집니다 — <strong>사유를 적어야 취소가 처리</strong>되며, 관련 담당자 전원에게 알림이 갑니다.</p>
         </li>
         <li>
           <h3>완료된 건의 최종 파일 받기</h3>
@@ -455,7 +455,7 @@
           <h3>1차검토중 건 처리</h3>
           <p>대시보드에서 <span class="pill pill-review1">1차검토중</span> 건을 열어 현재 파일을 확인합니다. 그동안 구두·메신저 등 다른 채널로 접수해둔 오타·수정요청이 있다면 이번 판단에 반영하세요.</p>
           <div class="note">최종본이 맞으면 <strong>"최종 검수요청(연구소)"</strong>을 눌러 연구소로 넘기고, 손볼 곳이 있으면 <strong>수정 지시사항</strong>을 적고 <strong>"디자인 수정요청"</strong>을 누릅니다.</div>
-          <div class="note">표시사항 가이드 문서나 참고 이미지가 있다면, 수정 지시사항 옆 <strong>"참고 파일"</strong> 첨부란에 함께 올려서 보낼 수 있습니다(선택). 첨부한 파일은 최효진 차장이 상세 페이지 이력에서 바로 다운로드할 수 있습니다.</div>
+          <div class="note">표시사항 가이드 문서나 참고 이미지가 있다면, <strong>"디자인 수정요청"</strong> 카드의 지시사항 입력란 아래 <strong>"참고 파일"</strong>에 함께 올려 보낼 수 있습니다(선택). 첨부한 파일은 최효진 차장이 상세 페이지 이력에서 바로 다운로드할 수 있습니다.</div>
         </li>
         <li>
           <h3>최근 승인 이력이 있으면 검수 생략</h3>
@@ -476,7 +476,7 @@
           <p style="margin-top:6px;">반대로 전달대기 건에서 문제가 보이면 <strong>"승인 취소"</strong>로 최종검수 단계로 되돌릴 수 있습니다. 다만 <strong>승인 자체와 수정필요(경미) 판정은 연구소 전용 권한</strong>이라 이 계정에는 버튼이 뜨지 않습니다.</p>
         </li>
         <li>
-          <h3>상세 화면과 대시보드 모두에서 처리</h3>
+          <h3>모든 처리는 상세 화면에서</h3>
           <p>상세 화면의 <strong>"처리"</strong> 영역은 지금 단계에서 할 수 있는 일만 카드로 나눠 보여줍니다 — 맨 위에 <strong>"내 차례"/"대기"</strong> 표시가 뜨고, 정상 절차는 초록 테두리로 강조됩니다. 반려·취소·승인 취소처럼 되돌릴 수 없는 처리는 <strong>붉은 테두리 버튼</strong>으로 따로 묶여 있고, 누르면 사유 입력란이 펼쳐집니다(실수로 누르는 것을 막기 위해 한 단계 접어둔 것입니다).</p>
           <p style="margin-top:6px;">모든 처리는 <strong>상세 페이지</strong>에서 합니다 — 목록에서는 요청번호를 눌러 들어가세요. (예전에는 대시보드 목록에도 반려 버튼이 있었지만, 같은 처리가 두 곳에 있으면 헷갈리고 사유 없이 눌리기 쉬워 없앴습니다.) 1차검토중 건을 반려하면 그 이전 단계가 없으므로 요청 자체가 <span class="pill pill-done">취소됨</span>으로 종료됩니다.</p>
         </li>
@@ -594,7 +594,42 @@
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">AI 비서는 뭘 할 수 있나요</h3>
           <p style="color:var(--ink-soft);font-size:14px;margin:0;">상단 메뉴 <strong>"AI 비서"</strong>에서 "내가 올린 발주 중 아직 안 끝난 게 뭐야?"처럼 자연어로 물어보면, 내가 화면에서 볼 수 있는 범위(요청자는 본인 건만, 그 외 역할은 회사 전체)의 발주 건·상태·이력을 근거로 답해줍니다. <strong>조회 전용</strong>이라 승인·취소 등 실제 처리는 여기서 되지 않으며, 해당 화면에서 직접 진행해야 합니다.</p>
+          <p style="color:var(--ink-soft);font-size:14px;margin:6px 0 0;">답변은 글자가 <strong>흘러나오듯</strong> 표시됩니다. <strong>Enter</strong>로 보내고 <strong>Shift+Enter</strong>로 줄바꿈합니다. "무료 사용량이 한도를 넘었습니다" 같은 안내가 뜨면 1~2분 뒤 다시 시도하세요.</p>
         </div>
+        <div class="card">
+          <h3 style="font-family:var(--font-body);font-size:15px;">첨부 자료는 누가 볼 수 있나요</h3>
+          <p style="color:var(--ink-soft);font-size:14px;margin:0;">요청 등록(요청사항 자료), 디자인 수정요청(참고 파일), 연구소 반려·수정필요(수정사항 자료)에서 올린 파일은 모두 <strong>이력(타임라인)</strong>에 남고, 그 건에 관여하는 <strong>담당자 누구나 상세 페이지에서 내려받을</strong> 수 있습니다. 한글 파일명도 그대로 유지됩니다.</p>
+        </div>
+      </div>
+
+      <h2 style="margin-top:34px;">관리자 전용 기능 <span style="font-size:13px;font-weight:400;color:var(--ink-soft);">— 계정 nousbo</span></h2>
+      <p style="color:var(--ink-soft);font-size:14px;margin:0 0 14px;max-width:66ch;">아래 메뉴는 관리자 계정으로 로그인했을 때만 화면 상단에 나타납니다. 일반 담당자 계정에는 보이지 않습니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>메뉴</th><th>하는 일</th><th>주의</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>품목 마스터 일괄 등록</td>
+              <td>엑셀로 품목(품목코드·품목명·분류)을 한 번에 등록·수정</td>
+              <td>기존 품목은 품목코드 기준으로 갱신됩니다</td>
+            </tr>
+            <tr>
+              <td>테스트 데이터 초기화</td>
+              <td>발주 건·이력·알림·품목·파일을 지우고 데모 데이터를 다시 채움</td>
+              <td><strong>실제 운영 데이터가 모두 지워집니다</strong> — 테스트 기간에만 사용</td>
+            </tr>
+            <tr>
+              <td>데모 데이터 시드</td>
+              <td>데모 계정 6개와 샘플 품목을 (없으면) 생성</td>
+              <td>기존 데이터는 지우지 않습니다</td>
+            </tr>
+            <tr>
+              <td>AI 비서 → 연결 진단</td>
+              <td>AI 비서가 응답하지 않을 때 실제 원인(사용량 초과·키·모델명)을 확인</td>
+              <td>"지금 테스트 호출하기"는 무료 사용량을 조금 사용합니다</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="table-scroll" style="margin-top:22px;">
