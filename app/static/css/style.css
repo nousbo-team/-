@@ -484,3 +484,61 @@ form.inline { display: inline; }
 button.file-thumb {
   padding: 0; background: none; font: inherit; cursor: zoom-in;
 }
+
+/* ---------- 대시보드 표 ----------
+   행마다 요소가 많아 시선이 흩어지던 표를 정리한다. 셀은 가운데 정렬로 맞춰
+   높이가 다른 칸(진행 흐름 등) 옆에서도 글자 기준선이 흔들리지 않게 하고,
+   날짜·경과처럼 훑어 내려가며 비교하는 값은 오른쪽 정렬 + 고정폭 숫자로 둔다. */
+/* 품목명이 표 폭을 독점하면 요청자·날짜 칸이 눌려 글자가 세로로 쪼개진다 —
+   대시보드에서는 품목 줄임 폭을 좁혀 나머지 칸에 자리를 남긴다. */
+.dash-table { --truncate-width: 230px; }
+.dash-table th, .dash-table td { vertical-align: middle; }
+.dash-table .col-who { white-space: nowrap; }
+.dash-table tbody td { padding-top: 10px; padding-bottom: 10px; }
+
+.dash-table .col-no { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dash-table .col-status { width: 1%; text-align: center; white-space: nowrap; }
+.dash-table .col-flow { width: 1%; }
+.dash-table .col-time {
+  text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--ink-soft);
+}
+.dash-table td.col-time.is-stale { color: var(--danger); font-weight: 700; }
+
+/* 상태 — 글자 없이 색 면으로만. 옆 칸의 진행 흐름이 단계명을 이미 보여준다. */
+.status-swatch {
+  display: inline-block; width: 34px; height: 9px;
+  border-radius: 99px; background: var(--line);
+  cursor: help; vertical-align: middle;
+}
+/* 색만으로 구분되는 표시라 단계마다 확실히 다른 색을 준다 — 최종검수(연구소)는
+   매뉴얼에서 연구소 역할에 쓰는 파랑과 맞춰, 화면과 문서가 같은 색을 가리키게 한다. */
+.status-swatch.pill-submitted { background: #93713f; }   /* 요청등록 — 갈색 */
+.status-swatch.pill-review1 { background: #3d5c4a; }     /* 1차검토중 — 진초록 */
+.status-swatch.pill-design { background: #a9762c; }      /* 디자인수정중 — 주황 */
+.status-swatch.pill-final { background: #345875; }       /* 최종검수중 — 파랑(연구소) */
+.status-swatch.pill-approved { background: #2f7a52; }    /* 전달대기 — 밝은 초록 */
+.status-swatch.pill-completed { background: #1e231f; }   /* 완료 — 먹색 */
+.status-swatch.pill-rejected { background: #a53e2b; }    /* 취소됨 — 빨강 */
+
+/* 좁은 화면에서는 표가 카드로 바뀌어 "진행 흐름"과 떨어져 보이므로, 색 면 대신
+   상태명을 글자로 되살린다 — 색만으로는 무슨 상태인지 알 수 없기 때문. */
+@media (max-width: 700px) {
+  .status-swatch {
+    width: auto; height: auto; padding: 2px 9px; border-radius: 99px;
+    font-size: 11.5px; font-weight: 700; color: #fff; box-shadow: none;
+  }
+  .status-swatch::after { content: attr(data-status); }
+  .dash-table .col-time { text-align: right; }
+
+  /* 표가 카드로 바뀌면 셀이 세로로 쌓이므로, 데스크톱용 열 너비 지정은 풀어야 한다 —
+     그대로 두면 width:1%가 실제 폭이 되어 칸이 몇 px로 찌그러진다. */
+  .dash-table .col-no, .dash-table .col-status, .dash-table .col-flow,
+  .dash-table .col-who, .dash-table .col-time { width: auto; }
+
+  /* 진행 흐름은 가로로 길어서 라벨 옆에 두면 자리가 안 나온다 — 라벨 아래로 쌓는다. */
+  .dash-table td.col-flow {
+    flex-direction: column; align-items: flex-start; text-align: left; gap: 6px;
+  }
+  .dash-table td.col-flow .flow-stepper { max-width: 100%; overflow-x: auto; }
+}

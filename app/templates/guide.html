@@ -478,7 +478,7 @@
         <li>
           <h3>상세 화면과 대시보드 모두에서 처리</h3>
           <p>상세 화면의 <strong>"처리"</strong> 영역은 지금 단계에서 할 수 있는 일만 카드로 나눠 보여줍니다 — 맨 위에 <strong>"내 차례"/"대기"</strong> 표시가 뜨고, 정상 절차는 초록 테두리로 강조됩니다. 반려·취소·승인 취소처럼 되돌릴 수 없는 처리는 <strong>붉은 테두리 버튼</strong>으로 따로 묶여 있고, 누르면 사유 입력란이 펼쳐집니다(실수로 누르는 것을 막기 위해 한 단계 접어둔 것입니다).</p>
-          <p style="margin-top:6px;">대시보드 목록의 행에서도 <strong>"반려(취소)"</strong>·<strong>"승인 취소"</strong>로 바로 처리할 수 있습니다. 1차검토중 건을 반려하면 그 이전 단계가 없으므로 요청 자체가 <span class="pill pill-done">취소됨</span>으로 종료됩니다.</p>
+          <p style="margin-top:6px;">모든 처리는 <strong>상세 페이지</strong>에서 합니다 — 목록에서는 요청번호를 눌러 들어가세요. (예전에는 대시보드 목록에도 반려 버튼이 있었지만, 같은 처리가 두 곳에 있으면 헷갈리고 사유 없이 눌리기 쉬워 없앴습니다.) 1차검토중 건을 반려하면 그 이전 단계가 없으므로 요청 자체가 <span class="pill pill-done">취소됨</span>으로 종료됩니다.</p>
         </li>
         <li>
           <h3>부재중 설정 (대체 담당자 라우팅)</h3>
@@ -589,6 +589,7 @@
           <h3 style="font-family:var(--font-body);font-size:15px;">대시보드의 "진행 흐름"은 뭔가요</h3>
           <p style="color:var(--ink-soft);font-size:14px;margin:0;">대시보드 목록에 요청번호별로 <strong>요청접수 → 내부확인 → 디자인수정 → 최종검수 → 전달대기 → 완료</strong> 6단계가 표시됩니다. 지나온 단계는 채워진 초록 점, <strong>지금 단계는 테두리로 강조</strong>, 아직 안 온 단계는 흐리게 보입니다. 디자인 수정을 거치지 않고 지나간 건은 그 단계가 <strong>점선에 취소선</strong>으로 표시되어, 실제로 거친 건과 구분됩니다.</p>
           <p style="color:var(--ink-soft);font-size:14px;margin:6px 0 0;">흐름 아래에 <strong>"▸ ○○ 처리 대기"</strong>가 함께 떠서 지금 누구 차례인지 바로 알 수 있고, 각 단계에 <strong>마우스를 올리면</strong> 그 단계의 담당과 상태를 알려줍니다.</p>
+          <p style="color:var(--ink-soft);font-size:14px;margin:6px 0 0;"><strong>상태</strong> 칸은 바로 옆 진행 흐름이 단계 이름을 이미 보여주기 때문에 글자 없이 <strong>색 막대</strong>로만 표시합니다 — 마우스를 올리면 상태명이 뜨고, 휴대폰처럼 좁은 화면에서는 글자로 바뀝니다.</p>
         </div>
         <div class="card">
           <h3 style="font-family:var(--font-body);font-size:15px;">AI 비서는 뭘 할 수 있나요</h3>

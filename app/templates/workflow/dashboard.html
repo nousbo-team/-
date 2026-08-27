@@ -13,27 +13,26 @@
 </div>
 <div class="card table-wrap">
   {% if my_requests %}
-  <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>사유</th><th>상태</th><th>진행 흐름</th><th>등록일</th><th></th></tr></thead>
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th class="col-no">요청번호</th>
+        <th>품목</th>
+        <th>사유</th>
+        <th class="col-status">상태</th>
+        <th class="col-flow">진행 흐름</th>
+        <th class="col-time">등록일</th>
+      </tr>
+    </thead>
     <tbody>
       {% for r in my_requests %}
       <tr>
-        <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td class="col-no" data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
         <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
         <td data-label="사유">{{ r.get_reason_display }}</td>
-        <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
-        <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
-        <td data-label="등록일">{{ r.created_at|date:'Y-m-d H:i' }}</td>
-        <td data-label="">
-          {% if r.status != 'COMPLETED' and r.status != 'CANCELLED' %}
-          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '요청을 취소하시겠습니까?');">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="cancel">
-            <input type="hidden" name="reason">
-            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">요청 취소</button>
-          </form>
-          {% endif %}
-        </td>
+        <td class="col-status" data-label="상태">{% include 'workflow/_status_swatch.html' %}</td>
+        <td class="col-flow" data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
+        <td class="col-time" data-label="등록일">{{ r.created_at|date:'Y-m-d' }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -49,43 +48,32 @@
   {% if empty_hint %}
   <div class="empty-state">{{ empty_hint }}</div>
   {% elif pending %}
-  <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>{% if role == 'DESIGNER' %}지시자{% else %}요청자{% endif %}</th><th>대기 경과</th><th></th></tr></thead>
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th class="col-no">요청번호</th>
+        <th>품목</th>
+        <th class="col-status">상태</th>
+        <th class="col-flow">진행 흐름</th>
+        <th class="col-who">{% if role == 'DESIGNER' %}지시자{% else %}요청자{% endif %}</th>
+        <th class="col-time">대기 경과</th>
+      </tr>
+    </thead>
     <tbody>
       {% for r in pending %}
       <tr>
-        <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td class="col-no" data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
         <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
-        <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
-        <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
+        <td class="col-status" data-label="상태">{% include 'workflow/_status_swatch.html' %}</td>
+        <td class="col-flow" data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
         {% if role == 'DESIGNER' %}
-        <td data-label="지시자">{% if r.assigned_by %}{{ r.assigned_by.get_full_name|default:r.assigned_by.username }}{% else %}—{% endif %}</td>
+        <td class="col-who" data-label="지시자">{% if r.assigned_by %}{{ r.assigned_by.get_full_name|default:r.assigned_by.username }}{% else %}—{% endif %}</td>
         {% else %}
-        <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        <td class="col-who" data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
         {% endif %}
-        <td data-label="대기 경과"{% if r.updated_at < stale_cutoff %} style="color:var(--danger);font-weight:700;"{% endif %}>{{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}</td>
-        <td data-label="">
-          {% if role == 'REVIEWER' and r.status == 'REVIEW1' %}
-          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '요청을 취소하시겠습니까?');">
-            {% csrf_token %}<input type="hidden" name="action" value="cancel"><input type="hidden" name="reason">
-            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려(취소)</button>
-          </form>
-          {% elif role == 'REVIEWER' and r.status == 'APPROVED' %}
-          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '승인을 취소하고 최종검수 단계로 되돌리시겠습니까?');">
-            {% csrf_token %}<input type="hidden" name="action" value="revert_approval"><input type="hidden" name="reason">
-            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">승인 취소</button>
-          </form>
-          {% elif role == 'DESIGNER' and r.status == 'DESIGN_EDIT' %}
-          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '1차검토로 반려하시겠습니까?');">
-            {% csrf_token %}<input type="hidden" name="action" value="design_reject"><input type="hidden" name="reason">
-            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려</button>
-          </form>
-          {% elif role == 'APPROVER' and r.status == 'FINAL_REVIEW' %}
-          <form method="post" action="{% url 'workflow:request_detail' r.pk %}" style="display:inline;" onsubmit="return quickReject(this, '반려하시겠습니까?');">
-            {% csrf_token %}<input type="hidden" name="action" value="final_reject"><input type="hidden" name="reason">
-            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px;">반려</button>
-          </form>
-          {% endif %}
+        <td class="col-time{% if r.updated_at < stale_cutoff %} is-stale{% endif %}" data-label="대기 경과"
+            {% if r.updated_at < stale_cutoff %}title="3일 넘게 멈춰 있는 건입니다"{% endif %}>
+          {{ r.updated_at|timesince }} 전{% if r.updated_at < stale_cutoff %} ⚠{% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -102,17 +90,26 @@
 <p class="subtitle">지금 내가 처리할 건이 없어도, 회사 전체 발주 건이 어느 단계에 있는지 항상 확인할 수 있습니다.</p>
 <div class="card table-wrap">
   {% if all_active %}
-  <table>
-    <thead><tr><th>요청번호</th><th>품목</th><th>상태</th><th>진행 흐름</th><th>요청자</th><th>최근 업데이트</th></tr></thead>
+  <table class="dash-table">
+    <thead>
+      <tr>
+        <th class="col-no">요청번호</th>
+        <th>품목</th>
+        <th class="col-status">상태</th>
+        <th class="col-flow">진행 흐름</th>
+        <th class="col-who">요청자</th>
+        <th class="col-time">최근 업데이트</th>
+      </tr>
+    </thead>
     <tbody>
       {% for r in all_active %}
       <tr>
-        <td data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
+        <td class="col-no" data-label="요청번호"><a href="{% url 'workflow:request_detail' r.pk %}">{{ r.request_no }}</a></td>
         <td data-label="품목"><span class="truncate" title="{{ r.product.name }}">{{ r.product.name }}</span></td>
-        <td data-label="상태"><span class="pill {{ r.status_pill_class }}">{{ r.get_status_display }}</span></td>
-        <td data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
-        <td data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
-        <td data-label="최근 업데이트">{{ r.updated_at|timesince }} 전</td>
+        <td class="col-status" data-label="상태">{% include 'workflow/_status_swatch.html' %}</td>
+        <td class="col-flow" data-label="진행 흐름">{% include 'workflow/_flow_stepper.html' %}</td>
+        <td class="col-who" data-label="요청자">{{ r.requester.get_full_name|default:r.requester.username }}</td>
+        <td class="col-time" data-label="최근 업데이트">{{ r.updated_at|timesince }} 전</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -122,19 +119,4 @@
   {% endif %}
 </div>
 {% endif %}
-
-<script>
-function quickReject(formEl, confirmMessage) {
-  if (!window.confirm(confirmMessage)) return false;
-  var reason = window.prompt('사유를 입력하세요 (필수)');
-  if (reason === null) return false;
-  reason = reason.trim();
-  if (!reason) {
-    window.alert('사유를 입력해야 합니다.');
-    return false;
-  }
-  formEl.querySelector('input[name="reason"]').value = reason;
-  return true;
-}
-</script>
 {% endblock %}

@@ -1,0 +1,7 @@
+{% comment %}
+상태는 색 면으로만 표시한다 — 바로 옆 "진행 흐름"이 단계 이름을 이미 글자로 보여주고
+있어, 배지 글자까지 두면 같은 정보가 두 번 나와 표가 복잡해진다. 마우스를 올리면
+상태명이 뜨고, 좁은 화면(카드 전환)에서는 글자로 바뀐다.
+{% endcomment %}
+<span class="status-swatch {{ r.status_pill_class }}" data-status="{{ r.get_status_display }}"
+      title="{{ r.get_status_display }}" role="img" aria-label="상태: {{ r.get_status_display }}"></span>
