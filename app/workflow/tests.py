@@ -273,6 +273,77 @@ class WorkflowTestCase(TestCase):
         event = req.events.filter(action=RequestEvent.Action.FINAL_REVISION).first()
         self.assertTrue(event.attachment)
 
+    def _flow_state(self, req, label):
+        return next(s['state'] for s in req.flow_progress()['steps'] if s['label'] == label)
+
+    def test_flow_breaks_out_intake_review_and_design_steps(self):
+        """예전엔 '1차검토' 하나에 뭉뚱그려져 있던 구간이 실제 단계로 쪼개져야 한다."""
+        req = self._new_request()
+        labels = [s['label'] for s in req.flow_progress()['steps']]
+        self.assertEqual(labels, ['요청접수', '내부확인', '디자인수정', '최종검수', '전달대기', '완료'])
+        self.assertNotIn('1차검토', labels)
+
+        self.assertEqual(self._flow_state(req, '요청접수'), 'done')
+        self.assertEqual(self._flow_state(req, '내부확인'), 'current')
+
+    def test_flow_reports_who_must_act_now(self):
+        """단계마다 지금 누구 차례인지 함께 나와야 화면에서 안내할 수 있다."""
+        req = self._new_request()
+        self.assertEqual(req.flow_progress()['current_owner'], '브랜드기획팀')
+
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        self.assertEqual(req.flow_progress()['current_owner'], '디자인팀')
+        self.assertEqual(self._flow_state(req, '디자인수정'), 'current')
+
+        ai = ContentFile(b'ai2', name='t2.ai')
+        jpg = ContentFile(_jpg_bytes(), name='t2.jpg')
+        services.design_upload(req, self.designer, ai, jpg)
+        req.refresh_from_db()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        self.assertEqual(req.flow_progress()['current_owner'], '연구소')
+
+        services.final_decision(req, self.approver, 'APPROVE')
+        req.refresh_from_db()
+        self.assertEqual(req.flow_progress()['current_owner'], '브랜드기획팀')
+
+    def test_design_step_marked_done_only_when_actually_used(self):
+        """디자인수정은 모든 건이 거치는 단계가 아니다 — 거치지 않고 지나간 건을
+        '완료'로 칠하면 이력과 어긋난다."""
+        skipped = self._new_request()
+        services.review_decision(skipped, self.reviewer, 'CONFIRM_FINAL')
+        skipped.refresh_from_db()
+        self.assertEqual(self._flow_state(skipped, '디자인수정'), 'skipped')
+
+        services.final_decision(skipped, self.approver, 'APPROVE')
+        skipped.refresh_from_db()
+        services.handoff(skipped, self.reviewer)
+        skipped.refresh_from_db()
+        # 완료된 뒤에도 거치지 않은 단계는 계속 구분돼야 한다.
+        self.assertEqual(self._flow_state(skipped, '디자인수정'), 'skipped')
+        self.assertEqual(self._flow_state(skipped, '최종검수'), 'done')
+
+    def test_design_step_done_when_it_actually_happened(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정')
+        req.refresh_from_db()
+        services.design_upload(req, self.designer, ContentFile(b'a', name='x.ai'),
+                               ContentFile(_jpg_bytes(), name='x.jpg'))
+        req.refresh_from_db()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        self.assertEqual(self._flow_state(req, '디자인수정'), 'done')
+
+    def test_cancelled_request_marks_every_step_cancelled(self):
+        req = self._new_request()
+        services.cancel_request(req, self.requester, reason='단종')
+        req.refresh_from_db()
+        flow = req.flow_progress()
+        self.assertTrue(flow['cancelled'])
+        self.assertIsNone(flow['current_owner'])
+        self.assertTrue(all(s['state'] == 'cancelled' for s in flow['steps']))
+
     def test_backup_routing_only_active_when_away(self):
         self.assertEqual(services.effective_reviewers(), [self.reviewer])
         self.reviewer_profile.is_away = True

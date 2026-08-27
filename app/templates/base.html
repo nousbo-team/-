@@ -194,5 +194,124 @@
   })();
   </script>
   {% endif %}
+  <!-- 이미지 확대 보기(레이어 팝업). data-lightbox 속성이 붙은 요소를 누르면 열린다 —
+       새 탭으로 원본을 띄우면 화면을 벗어나 맥락이 끊기고, 돌아오려면 탭을 닫아야 한다. -->
+  <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="이미지 크게 보기">
+    <div class="lightbox__bar">
+      <span class="lightbox__caption" id="lightbox-caption"></span>
+      <span class="lightbox__tools">
+        <button type="button" class="lightbox__btn" data-zoom="out" aria-label="축소" title="축소 (−)">−</button>
+        <span class="lightbox__zoom" id="lightbox-zoom">100%</span>
+        <button type="button" class="lightbox__btn" data-zoom="in" aria-label="확대" title="확대 (+)">+</button>
+        <button type="button" class="lightbox__btn" data-zoom="reset" title="원래 크기로 (0)">원래대로</button>
+        <button type="button" class="lightbox__btn lightbox__close" data-close aria-label="닫기" title="닫기 (Esc)">✕</button>
+      </span>
+    </div>
+    <div class="lightbox__stage" id="lightbox-stage">
+      <img id="lightbox-img" alt="">
+    </div>
+    <div class="lightbox__hint">휠로 확대·축소 · 드래그로 이동 · Esc 닫기</div>
+  </div>
+  <script>
+  (function () {
+    var box = document.getElementById('lightbox');
+    if (!box) return;
+    var img = document.getElementById('lightbox-img');
+    var stage = document.getElementById('lightbox-stage');
+    var caption = document.getElementById('lightbox-caption');
+    var zoomLabel = document.getElementById('lightbox-zoom');
+    var scale = 1, tx = 0, ty = 0, opener = null;
+    var MIN = 0.25, MAX = 6;
+
+    function apply() {
+      img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+      zoomLabel.textContent = Math.round(scale * 100) + '%';
+      stage.classList.toggle('is-pannable', scale > 1);
+    }
+    function reset() { scale = 1; tx = 0; ty = 0; apply(); }
+    function zoom(factor, originX, originY) {
+      var next = Math.min(MAX, Math.max(MIN, scale * factor));
+      if (next === scale) return;
+      // 커서 위치를 기준으로 확대해야 보던 지점이 화면에 남는다.
+      if (originX !== undefined) {
+        var rect = stage.getBoundingClientRect();
+        var cx = originX - rect.left - rect.width / 2;
+        var cy = originY - rect.top - rect.height / 2;
+        var ratio = next / scale;
+        tx = cx - (cx - tx) * ratio;
+        ty = cy - (cy - ty) * ratio;
+      }
+      scale = next;
+      apply();
+    }
+    function open(src, text, trigger) {
+      opener = trigger || null;
+      img.src = src;
+      img.alt = text || '';
+      caption.textContent = text || '';
+      box.hidden = false;
+      document.body.style.overflow = 'hidden';
+      reset();
+      box.querySelector('[data-close]').focus();
+    }
+    function close() {
+      box.hidden = true;
+      img.src = '';
+      document.body.style.overflow = '';
+      if (opener && opener.focus) opener.focus();
+      opener = null;
+    }
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('[data-lightbox]');
+      if (trigger) {
+        e.preventDefault();
+        open(trigger.dataset.full || trigger.getAttribute('href'), trigger.dataset.caption, trigger);
+      }
+    });
+
+    box.addEventListener('click', function (e) {
+      if (e.target.closest('[data-close]')) { close(); return; }
+      var z = e.target.closest('[data-zoom]');
+      if (z) {
+        if (z.dataset.zoom === 'in') zoom(1.25);
+        else if (z.dataset.zoom === 'out') zoom(1 / 1.25);
+        else reset();
+        return;
+      }
+      // 이미지 바깥(배경)을 누르면 닫는다.
+      if (e.target === box || e.target === stage) close();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (box.hidden) return;
+      if (e.key === 'Escape') close();
+      else if (e.key === '+' || e.key === '=') zoom(1.25);
+      else if (e.key === '-') zoom(1 / 1.25);
+      else if (e.key === '0') reset();
+    });
+
+    stage.addEventListener('wheel', function (e) {
+      if (box.hidden) return;
+      e.preventDefault();
+      zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // 확대한 상태에서 드래그로 이동
+    var dragging = false, startX = 0, startY = 0;
+    stage.addEventListener('pointerdown', function (e) {
+      if (scale <= 1) return;
+      dragging = true; startX = e.clientX - tx; startY = e.clientY - ty;
+      stage.setPointerCapture(e.pointerId);
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      tx = e.clientX - startX; ty = e.clientY - startY; apply();
+    });
+    stage.addEventListener('pointerup', function () { dragging = false; });
+    stage.addEventListener('pointercancel', function () { dragging = false; });
+    img.addEventListener('dblclick', function (e) { scale > 1 ? reset() : zoom(2, e.clientX, e.clientY); });
+  })();
+  </script>
 </body>
 </html>

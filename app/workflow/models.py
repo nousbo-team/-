@@ -73,43 +73,80 @@ class ReorderRequest(models.Model):
             self.Status.CANCELLED: 'pill-rejected',
         }[self.Status(self.status)]
 
-    # 대시보드에 "지금 어느 단계인지" 한눈에 보여주기 위한 간단한 흐름 표시(P0-5 보강).
-    # 실제 이력(RequestEvent)을 조회하지 않고 현재 status만으로 계산하는 가벼운 요약이라,
-    # 디자인수정 루프를 여러 번 거쳤어도 "지금" 기준으로만 위치를 보여준다.
-    _FLOW_ORDER = [Status.REVIEW1, Status.FINAL_REVIEW, Status.APPROVED, Status.COMPLETED]
-    _FLOW_LABELS = ['1차검토', '최종검수', '전달대기', '완료']
+    # 대시보드 "진행 흐름" 표시용. 예전에는 1차검토 하나에 요청접수·내부확인·디자인수정이
+    # 뭉뚱그려져 있어서, 목록만 봐서는 지금 실제로 누가 무엇을 붙들고 있는지 알 수 없었다.
+    # 실제 흐름대로 단계를 쪼개고, 단계마다 담당을 함께 내보내 화면에서 안내(hover)한다.
+    # (label, 담당, 이 단계에 해당하는 status)
+    _FLOW_STEPS = [
+        ('요청접수', '울산공장', None),
+        ('내부확인', '브랜드기획팀', 'REVIEW1'),
+        ('디자인수정', '디자인팀', 'DESIGN_EDIT'),
+        ('최종검수', '연구소', 'FINAL_REVIEW'),
+        ('전달대기', '브랜드기획팀', 'APPROVED'),
+        ('완료', None, 'COMPLETED'),
+    ]
+    _FLOW_CURRENT_INDEX = {
+        'SUBMITTED': 1,
+        'REVIEW1': 1,
+        'DESIGN_EDIT': 2,
+        'FINAL_REVIEW': 3,
+        'APPROVED': 4,
+        'COMPLETED': 5,
+    }
+
+    def _design_edit_happened(self):
+        """디자인수정 단계를 실제로 거쳤는지. 모든 건이 거치는 단계가 아니라서, 지나갔다고
+        무조건 "완료"로 칠하면 사실과 다르다. events가 prefetch되어 있으면 추가 쿼리는 없다."""
+        edit_actions = {RequestEvent.Action.REVIEW_REQUEST_EDIT, RequestEvent.Action.DESIGN_UPLOADED}
+        return any(e.action in edit_actions for e in self.events.all())
 
     def flow_progress(self):
-        status = self.Status(self.status)
+        status = self.status
         cancelled = status == self.Status.CANCELLED
         completed = status == self.Status.COMPLETED
-        design_edit = status == self.Status.DESIGN_EDIT
-
-        if cancelled:
-            current_index = -1
-        elif design_edit:
-            current_index = 0  # 디자인수정은 1차검토 루프 중이므로 그 위치에 표시
-        else:
-            try:
-                current_index = self._FLOW_ORDER.index(status)
-            except ValueError:
-                current_index = 0
+        current_index = self._FLOW_CURRENT_INDEX.get(status, 1)
+        design_done = self._design_edit_happened()
 
         steps = []
-        for i, label in enumerate(self._FLOW_LABELS):
+        for i, (label, owner, _st) in enumerate(self._FLOW_STEPS):
             if cancelled:
                 state = 'cancelled'
-            elif completed:
-                state = 'done'
-            elif i < current_index:
+            elif completed or i < current_index:
                 state = 'done'
             elif i == current_index:
                 state = 'current'
             else:
                 state = 'pending'
-            steps.append({'label': label, 'state': state})
 
-        return {'steps': steps, 'design_edit': design_edit, 'cancelled': cancelled}
+            # 거치지 않고 지나간 디자인수정은 "완료"가 아니라 "해당 없음"으로 구분한다.
+            if label == '디자인수정' and state == 'done' and not design_done:
+                state = 'skipped'
+
+            if state == 'current':
+                tooltip = f'지금 {owner} 처리 대기 중입니다' if owner else '완료 처리 단계입니다'
+            elif state == 'done':
+                tooltip = f'{label} 완료'
+            elif state == 'skipped':
+                tooltip = '디자인 수정 없이 진행된 건입니다'
+            elif state == 'cancelled':
+                tooltip = '취소된 건입니다'
+            else:
+                tooltip = f'{owner} 차례 (예정)' if owner else '예정'
+
+            steps.append({'label': label, 'state': state, 'owner': owner, 'tooltip': tooltip})
+
+        # 목록에서 한 줄로 "지금 누구 차례인지" 바로 읽히도록 따로 내보낸다.
+        current_owner = None
+        if not cancelled and not completed:
+            current_owner = self._FLOW_STEPS[current_index][1]
+
+        return {
+            'steps': steps,
+            'cancelled': cancelled,
+            'completed': completed,
+            'current_owner': current_owner,
+            'current_label': self._FLOW_STEPS[current_index][0],
+        }
 
 
 class RequestEvent(models.Model):

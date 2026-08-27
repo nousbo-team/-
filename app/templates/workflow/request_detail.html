@@ -23,9 +23,12 @@
       {% if req.current_file %}
       <div class="file-preview-row">
         {% if req.current_file.preview_image_url %}
-        <a href="{{ req.current_file.jpg_file.url }}" target="_blank" rel="noopener" class="file-thumb">
+        <button type="button" class="file-thumb" data-lightbox
+                data-full="{{ req.current_file.preview_image_url }}"
+                data-caption="{{ req.product.name }} v{{ req.current_file.version }}"
+                aria-label="미리보기 크게 보기">
           <img src="{{ req.current_file.preview_image_url }}" alt="{{ req.product.name }} v{{ req.current_file.version }} 미리보기">
-        </a>
+        </button>
         {% elif req.current_file.is_pdf %}
         <div class="file-thumb file-thumb-empty">PDF<br>미리보기 없음</div>
         {% else %}

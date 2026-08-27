@@ -226,12 +226,12 @@ def dashboard(request):
     if role == UserProfile.Role.REQUESTER:
         my_requests = ReorderRequest.objects.filter(
             requester=request.user
-        ).exclude(status__in=ReorderRequest.TERMINAL_STATUSES).select_related('product')
+        ).exclude(status__in=ReorderRequest.TERMINAL_STATUSES).select_related('product').prefetch_related('events')
     elif role == UserProfile.Role.REVIEWER:
         if request.user in services.effective_reviewers():
             pending = ReorderRequest.objects.filter(
                 status__in=[Status.REVIEW1, Status.APPROVED]
-            ).select_related('product')
+            ).select_related('product').prefetch_related('events')
         else:
             pending = ReorderRequest.objects.none()
             empty_hint = '현재 담당 리뷰어가 활성 상태입니다. 담당자가 부재중으로 설정하면 이 목록에 대기건이 표시됩니다.'
@@ -239,9 +239,9 @@ def dashboard(request):
         # 항상 확인할 수 있어야 한다 — 처리할 건이 없다고 화면이 텅 비지 않도록 별도로 노출.
         all_active = ReorderRequest.objects.exclude(
             status__in=ReorderRequest.TERMINAL_STATUSES
-        ).select_related('product', 'requester').order_by('-updated_at')
+        ).select_related('product', 'requester').prefetch_related('events').order_by('-updated_at')
     elif role == UserProfile.Role.DESIGNER:
-        pending = ReorderRequest.objects.filter(status=Status.DESIGN_EDIT).select_related('product')
+        pending = ReorderRequest.objects.filter(status=Status.DESIGN_EDIT).select_related('product').prefetch_related('events')
         # 디자인팀 입장에서 "요청자"는 최초 발주요청을 올린 울산공장이 아니라, 지금 이
         # 수정 지시를 내린 1차 검토·관리 창구 담당자(박현경 팀장 또는 부재 시 대체자
         # 김신덕 본부장)다 — 건마다 가장 최근 수정 요청 이벤트의 처리자를 붙여준다.
@@ -251,7 +251,7 @@ def dashboard(request):
             ).select_related('actor').order_by('-created_at').first()
             r.assigned_by = last_edit.actor if last_edit else None
     elif role == UserProfile.Role.APPROVER:
-        pending = ReorderRequest.objects.filter(status=Status.FINAL_REVIEW).select_related('product')
+        pending = ReorderRequest.objects.filter(status=Status.FINAL_REVIEW).select_related('product').prefetch_related('events')
 
     return render(request, 'workflow/dashboard.html', {
         'role': role,
