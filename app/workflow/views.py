@@ -406,11 +406,21 @@ def request_detail(request, pk):
             messages.error(request, str(e))
         return redirect('workflow:request_detail', pk=pk)
 
+    is_reviewer = request.user in services.effective_reviewers()
+    # 취소 권한은 services.cancel_request와 같은 규칙 — 요청자 본인은 종료 전 어느
+    # 단계에서나, 창구 담당자는 1차검토중일 때만. 화면에서 미리 걸러 보여줘야
+    # 누를 수 없는 버튼이 떠 있다가 오류 메시지로 튕기는 일이 없다.
+    can_cancel = (
+        req.status not in ReorderRequest.TERMINAL_STATUSES
+        and (request.user == req.requester
+             or (req.status == ReorderRequest.Status.REVIEW1 and is_reviewer))
+    )
     return render(request, 'workflow/request_detail.html', {
         'req': req,
         'events': events,
         'design_form': DesignUploadForm(),
-        'is_reviewer': request.user in services.effective_reviewers(),
+        'can_cancel': can_cancel,
+        'is_reviewer': is_reviewer,
         'is_designer': getattr(get_profile(request.user), 'role', None) == UserProfile.Role.DESIGNER,
         'is_approver': request.user in services.effective_approvers(),
         'exception_available': bool(req.current_file and req.current_file.within_exception_window()),

@@ -48,103 +48,236 @@
     </div>
 
     <h2>처리</h2>
-    <div class="card">
+    <div class="card action-card">
       {% if req.status == 'REVIEW1' and is_reviewer %}
-      <p class="subtitle" style="margin-bottom:10px;">최종본 여부를 판단하세요. 그동안 다른 채널로 접수된 오타·수정요청이 있다면 "수정 필요"로 반영하세요.</p>
+      <div class="action-context is-mine">
+        <span class="action-badge">내 차례</span>
+        <div><strong>1차 검토</strong> — 현재 파일이 최종본으로 적합한지 판단하세요. 다른 채널로 접수된 오타·수정요청이 있다면 아래 "디자인 수정요청"에 반영하세요.</div>
+      </div>
+
       {% if not req.current_file %}
-      <div class="messages"><li class="warning" style="list-style:none;">이 품목에는 아직 등록된 파일이 없습니다 — "수정 필요"로 디자인팀에 최초 파일 제작을 요청하세요.</li></div>
+      <p class="action-note is-warn">이 품목에는 아직 등록된 파일이 없습니다 — <strong>디자인 수정요청</strong>으로 디자인팀에 최초 파일 제작을 요청하세요.</p>
       {% endif %}
+
       {% if req.current_file %}
-      <form method="post" class="actions-row" style="align-items:flex-start;">
-        {% csrf_token %}
-        <div>
+      <section class="action-panel is-primary">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">연구소 최종검수 요청</h3>
+          <p class="action-panel__desc">정상 절차입니다. 연구소(조현종 소장)로 넘어가 최종 검수를 받습니다.</p>
+        </div>
+        <form method="post">
+          {% csrf_token %}
           {% if exception_available %}
-          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:8px;">
-            <input type="checkbox" name="use_exception"> 최근 3개월 이내 승인 이력 있음 — 최종검수 생략하고 바로 완료 처리
+          <label class="action-check">
+            <input type="checkbox" name="use_exception">
+            <span>최근 3개월 이내 승인 이력 있음 — 최종검수를 생략하고 바로 완료 처리</span>
           </label>
           {% endif %}
-          <button class="btn btn-primary" type="submit" name="action" value="review_confirm">최종 검수요청(연구소)</button>
-        </div>
-      </form>
-
-      <details class="direct-complete">
-        <summary>연구소 검수 없이 바로 완료 처리</summary>
-        <form method="post" style="margin-top:10px;">
-          {% csrf_token %}
-          <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">
-            디자인이 확정돼 연구소 검수가 필요 없다고 판단될 때만 사용하세요. 이 건은 바로
-            <strong>완료</strong>되고 현재 파일이 최종 승인본으로 등록되며, 연구소에도 통보됩니다.
-            정상 절차를 건너뛰는 처리라 <strong>사유가 이력에 그대로 남습니다.</strong>
-          </p>
-          <textarea name="direct_complete_reason" required rows="2"
-                    placeholder="연구소 검수를 생략하는 사유 (필수)"
-                    style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;"></textarea>
-          <button class="btn btn-danger" type="submit" name="action" value="review_complete"
-                  style="margin-top:8px;">연구소 검수 생략하고 완료 처리</button>
+          <button class="btn btn-primary btn-lg" type="submit" name="action" value="review_confirm">최종 검수요청(연구소)</button>
         </form>
-      </details>
+      </section>
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">연구소 검수 없이 바로 완료</h3>
+          <p class="action-panel__desc">디자인이 확정돼 연구소 검수가 필요 없다고 판단될 때 사용합니다.</p>
+        </div>
+        <details class="action-reveal">
+          <summary class="btn btn-outline-danger">연구소 검수 생략하고 완료 처리</summary>
+          <div class="action-reveal__body">
+            <p class="action-note is-danger">이 건은 바로 <strong>완료</strong>되고 현재 파일이 <strong>최종 승인본</strong>으로 등록되며, 연구소에도 통보됩니다. 정상 절차를 건너뛰는 처리라 <strong>사유가 이력에 그대로 남습니다.</strong></p>
+            <form method="post">
+              {% csrf_token %}
+              <textarea name="direct_complete_reason" class="action-textarea" required rows="2"
+                        placeholder="연구소 검수를 생략하는 사유 (필수)"></textarea>
+              <button class="btn btn-danger" type="submit" name="action" value="review_complete">완료 처리</button>
+            </form>
+          </div>
+        </details>
+      </section>
       {% endif %}
-      <form method="post" enctype="multipart/form-data" class="actions-row" style="align-items:flex-start;margin-top:10px;flex-wrap:wrap;">
-        {% csrf_token %}
-        <textarea name="note" placeholder="수정 지시사항을 입력하세요" style="flex:1;min-width:220px;min-height:60px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;"></textarea>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <label style="font-size:12px;color:var(--ink-soft);">참고 파일(표시사항 가이드 등, 선택)<br>
-            <input type="file" name="attachment" style="font-size:12.5px;margin-top:2px;">
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">디자인 수정요청</h3>
+          <p class="action-panel__desc">고칠 곳이 있으면 지시사항을 적어 디자인팀(최효진 차장)으로 보냅니다.</p>
+        </div>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <textarea name="note" class="action-textarea" rows="3" placeholder="수정 지시사항을 입력하세요"></textarea>
+          <label class="action-file">
+            <span>참고 파일 — 표시사항 가이드 등 (선택)</span>
+            <input type="file" name="attachment">
           </label>
           <button class="btn" type="submit" name="action" value="review_edit">디자인 수정요청</button>
-        </div>
-      </form>
+        </form>
+      </section>
 
       {% elif req.status == 'DESIGN_EDIT' and is_designer %}
-      <p class="subtitle" style="margin-bottom:10px;">수정된 파일을 업로드하세요. 업로드 시 새 버전으로 기록되고 1차 검토로 재확인 요청됩니다.</p>
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="field"><label>AI 파일</label>{{ design_form.ai_file }}</div>
-        <div class="field">
-          <label>이미지/PDF 파일</label>{{ design_form.jpg_file }}
-          <div class="hint">JPG·PNG·GIF 등 이미지 또는 PDF를 올릴 수 있습니다. PDF는 첫 페이지로 미리보기가 자동 생성됩니다.</div>
+      <div class="action-context is-mine">
+        <span class="action-badge">내 차례</span>
+        <div><strong>디자인 수정</strong> — 수정된 파일을 올리면 새 버전으로 기록되고, 1차 검토로 재확인 요청됩니다.</div>
+      </div>
+
+      <section class="action-panel is-primary">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">수정 파일 업로드</h3>
+          <p class="action-panel__desc">AI 원본과 확인용 이미지(또는 PDF)를 함께 올려주세요.</p>
         </div>
-        <div class="field"><label>수정 내용</label>{{ design_form.note }}</div>
-        <button class="btn btn-primary" type="submit" name="action" value="design_upload">수정 파일 업로드</button>
-      </form>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="field"><label>AI 파일</label>{{ design_form.ai_file }}</div>
+          <div class="field">
+            <label>이미지/PDF 파일</label>{{ design_form.jpg_file }}
+            <div class="hint">JPG·PNG·GIF 등 이미지 또는 PDF를 올릴 수 있습니다. PDF는 첫 페이지로 미리보기가 자동 생성됩니다.</div>
+          </div>
+          <div class="field"><label>수정 내용</label>{{ design_form.note }}</div>
+          <button class="btn btn-primary btn-lg" type="submit" name="action" value="design_upload">수정 파일 업로드</button>
+        </form>
+      </section>
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">작업할 수 없는 요청인가요?</h3>
+          <p class="action-panel__desc">지시사항이 불명확하거나 작업이 불가능하면 사유를 적어 1차 검토로 되돌립니다.</p>
+        </div>
+        <details class="action-reveal">
+          <summary class="btn btn-outline-danger">디자인 반려</summary>
+          <div class="action-reveal__body">
+            <form method="post">
+              {% csrf_token %}
+              <textarea name="reason" class="action-textarea" required rows="2" placeholder="반려 사유 (필수)"></textarea>
+              <button class="btn btn-danger" type="submit" name="action" value="design_reject">반려하고 1차검토로 되돌리기</button>
+            </form>
+          </div>
+        </details>
+      </section>
 
       {% elif req.status == 'FINAL_REVIEW' and is_approver %}
-      <p class="subtitle" style="margin-bottom:10px;">최종 검수 결과를 처리하세요. 반려 시 사유는 필수입니다.</p>
-      <form method="post">
-        {% csrf_token %}
-        <div class="field"><label>수정필요 / 반려 사유</label><textarea name="reason" placeholder="수정필요 또는 반려 시 사유를 입력하세요"></textarea></div>
-        <div class="actions-row">
-          <button class="btn btn-primary" type="submit" name="action" value="final_approve">승인</button>
-          <button class="btn" type="submit" name="action" value="final_revision">수정 필요(경미)</button>
-          <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+      <div class="action-context is-mine">
+        <span class="action-badge">내 차례</span>
+        <div><strong>최종 검수</strong> — 표시사항을 확인하고 승인하거나, 사유를 적어 되돌려 보내세요.</div>
+      </div>
+
+      <section class="action-panel is-primary">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">승인</h3>
+          <p class="action-panel__desc">현재 파일이 최종 승인본으로 등록되고, 브랜드기획팀의 전달 단계로 넘어갑니다.</p>
         </div>
-      </form>
+        <form method="post">
+          {% csrf_token %}
+          <button class="btn btn-primary btn-lg" type="submit" name="action" value="final_approve">승인</button>
+        </form>
+      </section>
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">되돌려 보내기</h3>
+          <p class="action-panel__desc">사유를 적고 아래 둘 중 하나를 고르세요. <strong>수정 필요(경미)</strong>는 가벼운 보완, <strong>반려</strong>는 다시 판단이 필요한 경우입니다. 둘 다 1차검토로 돌아갑니다.</p>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <textarea name="reason" class="action-textarea" rows="3" placeholder="사유를 입력하세요 (반려는 필수)"></textarea>
+          <div class="actions-row" style="margin-top:0;">
+            <button class="btn" type="submit" name="action" value="final_revision">수정 필요(경미)</button>
+            <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+          </div>
+        </form>
+      </section>
 
       {% elif req.status == 'FINAL_REVIEW' and is_reviewer %}
-      <p class="subtitle" style="margin-bottom:10px;">연구소 최종검수 대기 중입니다. 승인/수정필요 처리는 연구소 담당이며, 문제가 있다고 판단되면 사유를 기재하고 반려할 수 있습니다.</p>
-      <form method="post">
-        {% csrf_token %}
-        <div class="field"><label>반려 사유 (필수)</label><textarea name="reason" placeholder="반려 사유를 입력하세요" required></textarea></div>
-        <div class="actions-row">
-          <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려</button>
+      <div class="action-context">
+        <span class="action-badge is-wait">대기</span>
+        <div><strong>연구소 최종검수 대기 중</strong> — 승인·수정필요 판정은 연구소 담당입니다. 다만 문제를 먼저 발견했다면 직접 반려할 수 있습니다.</div>
+      </div>
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">직접 반려</h3>
+          <p class="action-panel__desc">연구소 판단을 기다리지 않고 되돌립니다. 건은 1차검토중으로 돌아갑니다.</p>
         </div>
-      </form>
+        <details class="action-reveal">
+          <summary class="btn btn-outline-danger">반려</summary>
+          <div class="action-reveal__body">
+            <form method="post">
+              {% csrf_token %}
+              <textarea name="reason" class="action-textarea" required rows="2" placeholder="반려 사유 (필수)"></textarea>
+              <button class="btn btn-danger" type="submit" name="action" value="final_reject">반려하고 1차검토로 되돌리기</button>
+            </form>
+          </div>
+        </details>
+      </section>
 
       {% elif req.status == 'APPROVED' and is_reviewer %}
-      <p class="subtitle" style="margin-bottom:10px;">연구소 승인이 완료되었습니다. 최종파일을 관리하고 울산공장(요청자)에게 전달하세요.</p>
-      <form method="post">
-        {% csrf_token %}
-        <button class="btn btn-primary" type="submit" name="action" value="handoff">최종파일 전달 · 완료 처리</button>
-      </form>
+      <div class="action-context is-mine">
+        <span class="action-badge">내 차례</span>
+        <div><strong>전달 대기</strong> — 연구소 승인이 끝났습니다. 최종파일을 울산공장(요청자)에 전달하고 완료 처리하세요.</div>
+      </div>
+
+      <section class="action-panel is-primary">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">최종파일 전달 · 완료</h3>
+          <p class="action-panel__desc">요청자에게 완료 알림이 가고, 이 건이 종료됩니다.</p>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <button class="btn btn-primary btn-lg" type="submit" name="action" value="handoff">최종파일 전달 · 완료 처리</button>
+        </form>
+      </section>
+
+      <section class="action-panel">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">승인 내용에 문제가 있나요?</h3>
+          <p class="action-panel__desc">전달 전에 다시 봐야 한다면 최종검수 단계로 되돌릴 수 있습니다.</p>
+        </div>
+        <details class="action-reveal">
+          <summary class="btn btn-outline-danger">승인 취소</summary>
+          <div class="action-reveal__body">
+            <form method="post">
+              {% csrf_token %}
+              <textarea name="reason" class="action-textarea" required rows="2" placeholder="승인을 취소하는 사유 (필수)"></textarea>
+              <button class="btn btn-danger" type="submit" name="action" value="revert_approval">승인 취소하고 최종검수로 되돌리기</button>
+            </form>
+          </div>
+        </details>
+      </section>
 
       {% elif req.status == 'COMPLETED' %}
-      <div class="empty-state">완료된 건입니다. 최종 승인본은 위 "현재 파일"에서 다운로드할 수 있습니다.</div>
+      <div class="action-context">
+        <span class="action-badge is-done">완료</span>
+        <div>종료된 건입니다. 최종 승인본은 위 <strong>"현재 파일"</strong>에서 다운로드할 수 있습니다.</div>
+      </div>
 
       {% elif req.status == 'CANCELLED' %}
-      <div class="empty-state">취소된 건입니다.</div>
+      <div class="action-context">
+        <span class="action-badge is-done">취소됨</span>
+        <div>취소된 건입니다. 취소 사유는 아래 이력에서 확인할 수 있습니다.</div>
+      </div>
 
       {% else %}
-      <div class="empty-state">현재 단계에서 처리 권한이 없습니다 — 담당자를 기다려주세요.</div>
+      <div class="action-context">
+        <span class="action-badge is-wait">대기</span>
+        <div>현재 단계에서는 처리할 항목이 없습니다 — 담당자 처리를 기다려주세요.</div>
+      </div>
+      {% endif %}
+
+      {% if can_cancel %}
+      <section class="action-panel is-danger">
+        <div class="action-panel__head">
+          <h3 class="action-panel__title">요청 취소</h3>
+          <p class="action-panel__desc">이 건을 종료합니다. 취소하면 되돌릴 수 없고, 관련 담당자에게 알림이 갑니다.</p>
+        </div>
+        <details class="action-reveal">
+          <summary class="btn btn-outline-danger">요청 취소</summary>
+          <div class="action-reveal__body">
+            <form method="post">
+              {% csrf_token %}
+              <textarea name="reason" class="action-textarea" required rows="2" placeholder="취소 사유 (필수)"></textarea>
+              <button class="btn btn-danger" type="submit" name="action" value="cancel">요청 취소</button>
+            </form>
+          </div>
+        </details>
+      </section>
       {% endif %}
     </div>
   </div>

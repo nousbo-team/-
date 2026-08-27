@@ -319,19 +319,69 @@ form.inline { display: inline; }
 .flow-note-cancelled { color: var(--danger); }
 .demo-accounts code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
 
-/* 1차검토에서 "연구소 검수 없이 바로 완료" — 정상 절차를 건너뛰는 예외 처리라
-   기본은 접어두고, 펼쳤을 때 경고 성격이 드러나도록 구분해 보여준다. */
-.direct-complete { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
-.direct-complete > summary {
-  cursor: pointer; font-size: 12.5px; color: var(--ink-soft);
-  list-style: none; display: inline-flex; align-items: center; gap: 5px;
+/* ---------- 요청 상세: "처리" 영역 ----------
+   단계·역할마다 할 수 있는 일이 달라서, 한 화면에 여러 처리가 섞여 보인다.
+   (1) 지금 누구 차례인지 배너로 먼저 알리고, (2) 처리마다 제목+설명이 있는
+   패널로 경계를 긋고, (3) 되돌릴 수 없는 처리(반려·취소·검수 생략)는 한 번
+   펼쳐야 폼이 나오게 해서 실수 클릭을 막는다 — 접힌 상태에서도 버튼으로 보이도록
+   summary 자체에 .btn을 씌운다. */
+.action-card { display: flex; flex-direction: column; gap: 14px; }
+
+.action-context {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--paper); border: 1px solid var(--line);
+  font-size: 13.5px; line-height: 1.55;
 }
-.direct-complete > summary::-webkit-details-marker { display: none; }
-.direct-complete > summary::before { content: '▸'; font-size: 10px; }
-.direct-complete[open] > summary::before { content: '▾'; }
-.direct-complete > summary:hover { color: var(--danger); }
-.direct-complete[open] {
-  background: var(--danger-soft); border: 1px solid var(--danger);
-  border-radius: 8px; padding: 10px 12px;
+.action-context.is-mine { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.action-badge {
+  flex: 0 0 auto; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  background: var(--accent); color: #fff;
 }
-.direct-complete[open] > summary { color: var(--danger); font-weight: 700; }
+.action-badge.is-wait { background: var(--ink-soft); }
+.action-badge.is-done { background: var(--ink); }
+
+.action-panel {
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  background: var(--paper-raised);
+  display: flex; flex-direction: column; gap: 12px;
+}
+/* 그 단계에서 기대되는 정상 경로 하나만 강조한다 */
+.action-panel.is-primary { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-soft); }
+.action-panel.is-danger { border-color: var(--danger); background: var(--danger-soft); }
+.action-panel__head { display: flex; flex-direction: column; gap: 3px; }
+.action-panel__title { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.action-panel.is-primary .action-panel__title { color: var(--accent-ink); }
+.action-panel.is-danger .action-panel__title { color: var(--danger); }
+.action-panel__desc { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+.action-panel form { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin: 0; }
+.action-panel .field { margin-bottom: 0; width: 100%; }
+
+.action-textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+  font-family: var(--font); font-size: 13px; line-height: 1.5;
+  background: #fff; color: var(--ink); resize: vertical;
+}
+.action-textarea:focus { outline: 2px solid var(--accent-soft); outline-offset: 1px; border-color: var(--accent); }
+
+.action-check { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; cursor: pointer; }
+.action-check input { margin-top: 2px; }
+
+.action-file { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+.action-file input { font-size: 12.5px; }
+
+.action-note { font-size: 12.5px; line-height: 1.55; padding: 10px 12px; border-radius: 8px; margin: 0; }
+.action-note.is-warn { background: var(--warn-soft); color: var(--warn); }
+.action-note.is-danger { background: var(--danger-soft); color: var(--danger); }
+
+.action-reveal > summary { list-style: none; }
+.action-reveal > summary::-webkit-details-marker { display: none; }
+.action-reveal > summary::after { content: '…'; opacity: .7; }
+.action-reveal[open] > summary::after { content: ''; }
+.action-reveal__body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.btn-outline-danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn-outline-danger:hover { background: var(--danger-soft); }
+.action-panel.is-danger .btn-outline-danger { background: var(--paper-raised); }
+.btn-lg { padding: 10px 18px; font-size: 14px; }
