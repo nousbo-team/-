@@ -353,6 +353,11 @@ def request_detail(request, pk):
                 use_exception = request.POST.get('use_exception') == 'on'
                 services.review_decision(req, request.user, 'CONFIRM_FINAL', use_exception=use_exception)
                 messages.success(request, '최종본 확인 처리했습니다.')
+            elif action == 'review_complete':
+                reason = request.POST.get('direct_complete_reason', '')
+                services.complete_without_final_review(req, request.user, reason)
+                messages.success(request, '연구소 검수 없이 완료 처리했습니다.')
+
             elif action == 'review_edit':
                 note = request.POST.get('note', '')
                 attachment = request.FILES.get('attachment')

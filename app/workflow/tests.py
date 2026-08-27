@@ -12,7 +12,7 @@ from accounts.models import UserProfile
 from catalog.models import PackagingFile, Product
 
 from . import assistant, services
-from .models import ReorderRequest
+from .models import ReorderRequest, RequestEvent
 
 User = get_user_model()
 
@@ -150,6 +150,66 @@ class WorkflowTestCase(TestCase):
         # use_exception requested but file outside window -> should go to FINAL_REVIEW, not skip
         self.assertEqual(req.status, ReorderRequest.Status.FINAL_REVIEW)
         self.assertFalse(req.used_exception)
+
+    def test_reviewer_can_complete_without_final_review(self):
+        """디자인 확정 후 연구소 검수를 건너뛰고 바로 완료 — 파일도 최종 승인본이 되어야 한다."""
+        req = self._new_request()
+        services.complete_without_final_review(req, self.reviewer, reason='기존 승인본과 동일한 규격이라 검수 불필요')
+        req.refresh_from_db()
+
+        self.assertEqual(req.status, ReorderRequest.Status.COMPLETED)
+        self.assertTrue(req.used_exception)
+        req.current_file.refresh_from_db()
+        self.assertEqual(req.current_file.status, PackagingFile.Status.FINAL_APPROVED)
+        # 완료된 건의 파일이 품목의 현재 최종본으로 잡혀야 한다.
+        self.assertEqual(self.product.current_final_file(), req.current_file)
+
+        # 검수를 건너뛴 사실과 사유가 이력에 남아야 한다.
+        event = req.events.filter(action=RequestEvent.Action.REVIEW_DIRECT_COMPLETE).first()
+        self.assertIsNotNone(event)
+        self.assertIn('검수 불필요', event.note)
+
+    def test_direct_complete_requires_reason(self):
+        req = self._new_request()
+        with self.assertRaises(services.ValidationErrorWF):
+            services.complete_without_final_review(req, self.reviewer, reason='   ')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.REVIEW1)
+
+    def test_direct_complete_denied_for_non_reviewer(self):
+        """연구소·디자인·요청자는 이 경로를 쓸 수 없다 — 창구 담당자 전용."""
+        req = self._new_request()
+        for actor in (self.approver, self.designer, self.requester):
+            with self.subTest(actor=actor.username):
+                with self.assertRaises(services.PermissionDeniedError):
+                    services.complete_without_final_review(req, actor, reason='사유')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.REVIEW1)
+
+    def test_direct_complete_notifies_requester_and_lab(self):
+        req = self._new_request()
+        services.complete_without_final_review(req, self.reviewer, reason='검수 생략 사유')
+        notified = set(req.notifications.values_list('user', flat=True))
+        self.assertIn(self.requester.pk, notified)
+        # 자기 검수를 건너뛴 것이므로 연구소도 통보받아야 한다.
+        self.assertIn(self.approver.pk, notified)
+
+    def test_direct_complete_only_from_review1(self):
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.FINAL_REVIEW)
+        with self.assertRaises(services.ValidationErrorWF):
+            services.complete_without_final_review(req, self.reviewer, reason='사유')
+
+    def test_exception_skip_marks_file_approved(self):
+        """3개월 예외로 완료해도 파일이 최종 승인본으로 등록돼야 한다(예전엔 누락됐음)."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL', use_exception=True)
+        req.refresh_from_db()
+        req.current_file.refresh_from_db()
+        self.assertEqual(req.current_file.status, PackagingFile.Status.FINAL_APPROVED)
+        self.assertEqual(self.product.current_final_file(), req.current_file)
 
     def test_backup_routing_only_active_when_away(self):
         self.assertEqual(services.effective_reviewers(), [self.reviewer])

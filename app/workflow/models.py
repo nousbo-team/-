@@ -48,7 +48,9 @@ class ReorderRequest(models.Model):
     detail = models.TextField(blank=True, help_text='요청자가 남긴 구체적인 요청사항(선택)')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.REVIEW1)
     current_file = models.ForeignKey(PackagingFile, null=True, blank=True, on_delete=models.SET_NULL, related_name='requests')
-    used_exception = models.BooleanField(default=False, help_text='3개월 이내 승인 예외로 최종검수를 생략했는지 여부')
+    used_exception = models.BooleanField(
+        default=False,
+        help_text='연구소 최종검수를 생략하고 완료했는지 여부 — 3개월 이내 승인 예외, 또는 1차 검토·관리 창구의 직접 완료 처리')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -121,6 +123,7 @@ class RequestEvent(models.Model):
         FINAL_REJECT = 'FINAL_REJECT', '반려'
         HANDOFF = 'HANDOFF', '최종파일 전달 · 완료'
         EXCEPTION_SKIP = 'EXCEPTION_SKIP', '3개월 예외 적용(최종검수 생략)'
+        REVIEW_DIRECT_COMPLETE = 'REVIEW_DIRECT_COMPLETE', '연구소 검수 없이 완료 처리'
         BULK_UPLOAD = 'BULK_UPLOAD', '일괄 업로드로 파일 강제 갱신'
         NOTIFY = 'NOTIFY', '알림 발송'
         CANCELLED = 'CANCELLED', '요청 취소'

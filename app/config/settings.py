@@ -114,6 +114,11 @@ _prod_database_url = os.environ.get('PROD_DATABASE_URL')
 if _prod_database_url:
     import dj_database_url as _dj_database_url
     DATABASES['prod'] = _dj_database_url.parse(_prod_database_url, conn_max_age=0)
+    # 테스트 러너는 기본적으로 DATABASES의 "모든" alias에 대해 테스트 DB를 만든다 —
+    # 그대로 두면 manage.py test를 돌릴 때마다 운영 Supabase 서버에 test_postgres
+    # 데이터베이스가 생성·삭제되고, 도중에 중단되면 찌꺼기가 남는다(게다가 매우 느리다).
+    # MIRROR를 지정하면 이 alias에 대해서는 테스트 DB를 만들지 않는다.
+    DATABASES['prod']['TEST'] = {'MIRROR': 'default'}
 
 
 AUTH_PASSWORD_VALIDATORS = [

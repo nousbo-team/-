@@ -188,6 +188,9 @@ def review_decision(req, actor, decision, note='', use_exception=False, attachme
                     f'"{req.product.name}" 디자인 수정이 필요합니다: {note}{attach_note}', kakao=True)
         elif decision == 'CONFIRM_FINAL':
             if use_exception and req.current_file and req.current_file.within_exception_window():
+                # 승인 처리를 빠뜨리면 완료된 건인데도 파일이 FINAL_APPROVED가 아니라서
+                # product.current_final_file()이 계속 예전 버전을 가리킨다.
+                req.current_file.approve(actor)
                 req.status = ReorderRequest.Status.COMPLETED
                 req.used_exception = True
                 req.save(update_fields=['status', 'used_exception', 'updated_at'])
@@ -203,6 +206,36 @@ def review_decision(req, actor, decision, note='', use_exception=False, attachme
                         f'"{req.product.name}" 최종 검수가 필요합니다.', kakao=True)
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
+    return req
+
+
+def complete_without_final_review(req, actor, reason):
+    """1차 검토·관리 창구(브랜드기획팀)가 연구소 최종검수를 거치지 않고 바로 완료 처리한다.
+
+    디자인이 확정돼 연구소 검수까지 갈 필요가 없다고 판단되는 건을 빠르게 마무리하기 위한
+    경로다. 3개월 예외(EXCEPTION_SKIP)와 달리 최근 승인 이력 같은 조건이 없는 대신,
+    정상 절차를 건너뛰는 결정이므로 사유를 필수로 받고 연구소에도 통보한다 — 검수를
+    건너뛰었다는 사실이 이력에 그대로 남아야 나중에 경위를 추적할 수 있다.
+    """
+    if actor not in effective_reviewers():
+        raise PermissionDeniedError('1차 검토·관리 창구 담당자만 처리할 수 있습니다.')
+    if req.status != ReorderRequest.Status.REVIEW1:
+        raise ValidationErrorWF('현재 1차검토 단계가 아닙니다.')
+    if not req.current_file:
+        raise ValidationErrorWF('연결된 파일이 없어 완료 처리할 수 없습니다.')
+    if not reason.strip():
+        raise ValidationErrorWF('연구소 검수를 생략하는 사유는 필수입니다.')
+
+    with transaction.atomic():
+        req.current_file.approve(actor)
+        req.status = ReorderRequest.Status.COMPLETED
+        req.used_exception = True
+        req.save(update_fields=['status', 'used_exception', 'updated_at'])
+        _log(req, actor, RequestEvent.Action.REVIEW_DIRECT_COMPLETE, note=reason)
+        _notify(req, [req.requester],
+                f'"{req.product.name}" 발주 건이 완료되었습니다(연구소 검수 생략). 사유: {reason}', kakao=True)
+        _notify(req, effective_approvers(),
+                f'"{req.product.name}" 발주 건이 연구소 검수 없이 완료 처리되었습니다. 사유: {reason}')
     return req
 
 
