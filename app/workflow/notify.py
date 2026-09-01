@@ -162,14 +162,50 @@ def _send_via_solapi(recipients, product_name, message):
     return '알림톡' if use_kakao else 'SMS'
 
 
-def _build_notify_email_html(req, subject, message, recipient_name):
+def _person_label(user):
+    """이름 뒤에 소속을 붙여 "박현경 (브랜드기획팀)"처럼 만든다 — 받는 사람이
+    누가 보낸 요청인지 이름만으로 헷갈리지 않게."""
+    if not user:
+        return '시스템'
+    name = user.get_full_name() or user.username
+    profile = getattr(user, 'profile', None)
+    dept = getattr(profile, 'department', '') if profile else ''
+    return f'{name} ({dept})' if dept else name
+
+
+def _trigger_context(req, trigger):
+    """이 알림을 유발한 직전 처리에서, 받는 사람이 알아야 할 것만 뽑는다.
+
+    예전에는 어느 단계의 알림이든 최초 등록자·최초 요청사항만 실려서, 디자인팀이
+    받는 수정요청 메일에도 "요청자: 이정인 / 요청사항: (최초 등록 내용)"이 찍혔다.
+    실제로 필요한 건 바로 앞 단계에서 누가 무엇을 요청했는지다.
+    """
+    if not trigger:
+        return {}
+
+    # 등록(SUBMITTED)의 note는 시스템이 조립한 문장이라, 사람이 쓴 요청사항을 그대로 보여준다.
+    is_submit = trigger.action == trigger.Action.SUBMITTED
+    body = (req.detail or '').strip() if is_submit else (trigger.note or '').strip()
+
+    return {
+        'from_name': _person_label(trigger.actor),
+        'from_action': trigger.get_action_display(),
+        'from_body': body,
+        'from_at': trigger.created_at,
+        'from_has_attachment': bool(trigger.attachment),
+        # 등록 알림은 보낸 사람이 곧 최초 요청자라 아래 "최초 요청" 블록이 중복된다.
+        'show_origin': not is_submit,
+    }
+
+
+def _build_notify_email_html(req, subject, message, recipient_name, trigger=None):
     """알림 이메일을 텍스트 한 줄이 아니라 받는 사람 이름으로 인사말을 붙이고,
-    품목·상태·요청자·요청사항과 상세 페이지 바로가기 버튼이 있는 카드형 HTML로
-    만든다. req가 없으면(예외적인 경우) None을 반환해 텍스트 메일로만 보낸다."""
+    품목·상태와 "직전 단계에서 누가 무엇을 요청했는지", 그리고 상세 페이지 바로가기
+    버튼이 있는 카드형 HTML로 만든다. req가 없으면 None을 반환해 텍스트 메일로만 보낸다."""
     if not req:
         return None
     site_url = settings.SITE_URL.rstrip('/')
-    return render_to_string('emails/notify_email.html', {
+    ctx = {
         'subject': subject,
         'recipient_name': recipient_name,
         'request_no': req.request_no,
@@ -177,10 +213,37 @@ def _build_notify_email_html(req, subject, message, recipient_name):
         'product_name': req.product.name,
         'status_display': req.get_status_display(),
         'requester_name': req.requester.get_full_name() or req.requester.username,
+        'requester_label': _person_label(req.requester),
+        'created_at': req.created_at,
         'detail': req.detail,
         'message': message,
         'url': f'{site_url}/requests/{req.pk}/',
-    })
+    }
+    ctx.update(_trigger_context(req, trigger))
+    return render_to_string('emails/notify_email.html', ctx)
+
+
+def _build_notify_email_text(req, message, recipient_name, trigger=None):
+    """HTML을 못 읽는 메일 클라이언트용 본문. 카드에 담은 것과 같은 정보를 담는다."""
+    lines = [f'{recipient_name}님, 안녕하세요.', '', message, '']
+    ctx = _trigger_context(req, trigger) if req else {}
+    if ctx:
+        lines.append(f"[보낸 사람] {ctx['from_name']}")
+        lines.append(f"[처리 내용] {ctx['from_action']}")
+        if ctx['from_body']:
+            lines.append(f"[전달 내용] {ctx['from_body']}")
+        if ctx['from_has_attachment']:
+            lines.append('[첨부] 참고 파일이 있습니다 — 상세 페이지에서 내려받으세요.')
+        if ctx['show_origin']:
+            lines.append('')
+            lines.append(f"(최초 요청) {_person_label(req.requester)}"
+                         f" · {req.created_at.strftime('%Y-%m-%d')}")
+            if (req.detail or '').strip():
+                lines.append(f"(최초 요청사항) {req.detail.strip()}")
+    if req:
+        site_url = settings.SITE_URL.rstrip('/')
+        lines += ['', f'요청 상세보기: {site_url}/requests/{req.pk}/']
+    return '\n'.join(lines)
 
 
 def _send_via_brevo(to_email, to_name, subject, message, html_body=None):
@@ -212,7 +275,7 @@ def _send_via_smtp(to_email, subject, message, html_body=None):
     email.send(fail_silently=False)
 
 
-def send_email_mock(users, subject, message, req=None):
+def send_email_mock(users, subject, message, req=None, trigger=None):
     """수신자마다 따로 발송한다 — 한 메일에 여러 명을 to로 묶으면 서로의 주소가
     노출되고 메시지도 똑같아진다. 대신 받는 사람 이름으로 인사말을 붙여 개인화하고,
     한 통씩 보낸다(보통 수신자가 1~2명이라 API 호출이 늘어도 부담 없음)."""
@@ -231,8 +294,8 @@ def send_email_mock(users, subject, message, req=None):
     sent, failed = [], []
     for u in recipients:
         name = u.get_full_name() or u.username
-        text_body = f'{name}님, 안녕하세요.\n\n{message}'
-        html_body = _build_notify_email_html(req, subject, message, name)
+        text_body = _build_notify_email_text(req, message, name, trigger)
+        html_body = _build_notify_email_html(req, subject, message, name, trigger)
         try:
             if settings.BREVO_API_KEY:
                 _send_via_brevo(u.email, name, subject, text_body, html_body)

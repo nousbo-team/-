@@ -81,15 +81,20 @@ def _generate_request_no():
     return f'{prefix}{count_today + 1:03d}'
 
 
-def _notify(req, users, message, kakao=False):
+def _notify(req, users, message, kakao=False, trigger=None):
     """알림 발송. 이메일(항상 시도) + 카카오톡/문자(kakao=True일 때만)를 한 건의
-    이력 항목으로 합쳐 기록한다 — 수신자 아이디와 채널별 성공 여부를 함께 남긴다."""
+    이력 항목으로 합쳐 기록한다 — 수신자 아이디와 채널별 성공 여부를 함께 남긴다.
+
+    trigger는 이 알림을 유발한 직전 처리(RequestEvent)다. 메일에는 최초 등록 정보만
+    실려서 어느 단계의 알림이든 "이정인 / 최초 요청사항"으로 똑같이 보이는 문제가
+    있었다 — 받는 사람이 알아야 할 건 바로 앞 단계에서 누가 무엇을 요청했는지이므로,
+    그 이벤트를 함께 넘겨 메일에 표시한다."""
     for u in users:
         Notification.objects.create(user=u, request=req, message=message)
 
     recipient_names = ', '.join(u.username for u in users) or '(대상 없음)'
     email_status, email_detail = send_email_mock(
-        users, f'[{req.request_no}] {req.product.name}', message, req=req)
+        users, f'[{req.request_no}] {req.product.name}', message, req=req, trigger=trigger)
 
     lines = [f'수신자: {recipient_names}', message, '']
     email_line = f'· 이메일: {_NOTIFY_STATUS_LABEL[email_status]}'
@@ -121,12 +126,12 @@ def _notify(req, users, message, kakao=False):
     )
 
 
-def _notify_history(req, message, kakao=False):
+def _notify_history(req, message, kakao=False, trigger=None):
     """요청 취소·이전단계 반려 시, 요청자와 지금까지 이 건을 처리했던 모든 담당자
     (본인 포함)에게 알린다 — 되돌려진 사실을 이전 담당자들도 알아야 하므로."""
     participants = {req.requester}
     participants.update(e.actor for e in req.events.all() if e.actor)
-    _notify(req, list(participants), message, kakao=kakao)
+    _notify(req, list(participants), message, kakao=kakao, trigger=trigger)
 
 
 def create_request(product, requester, reason, detail='', attachment=None):
@@ -147,9 +152,10 @@ def create_request(product, requester, reason, detail='', attachment=None):
             note += f'\n요청사항: {detail.strip()}'
         if attachment:
             note += '\n(요청사항 참고 파일 첨부됨)'
-        _log(req, requester, RequestEvent.Action.SUBMITTED, note=note, attachment=attachment)
+        event = _log(req, requester, RequestEvent.Action.SUBMITTED, note=note, attachment=attachment)
         _notify(req, effective_reviewers(),
-                f'"{product.name}" 발주요청이 등록되었습니다. 최종본 확인이 필요합니다.', kakao=True)
+                f'"{product.name}" 발주요청이 등록되었습니다. 최종본 확인이 필요합니다.',
+                kakao=True, trigger=event)
     return req, None
 
 
@@ -184,10 +190,11 @@ def review_decision(req, actor, decision, note='', use_exception=False, attachme
         if decision == 'NEEDS_EDIT':
             req.status = ReorderRequest.Status.DESIGN_EDIT
             req.save(update_fields=['status', 'updated_at'])
-            _log(req, actor, RequestEvent.Action.REVIEW_REQUEST_EDIT, note=note, attachment=attachment)
+            event = _log(req, actor, RequestEvent.Action.REVIEW_REQUEST_EDIT, note=note, attachment=attachment)
             attach_note = ' (참고 파일 첨부됨)' if attachment else ''
             _notify(req, effective_designers(),
-                    f'"{req.product.name}" 디자인 수정이 필요합니다: {note}{attach_note}', kakao=True)
+                    f'"{req.product.name}" 디자인 수정이 필요합니다: {note}{attach_note}',
+                    kakao=True, trigger=event)
         elif decision == 'CONFIRM_FINAL':
             if use_exception and req.current_file and req.current_file.within_exception_window():
                 # 승인 처리를 빠뜨리면 완료된 건인데도 파일이 FINAL_APPROVED가 아니라서
@@ -196,16 +203,18 @@ def review_decision(req, actor, decision, note='', use_exception=False, attachme
                 req.status = ReorderRequest.Status.COMPLETED
                 req.used_exception = True
                 req.save(update_fields=['status', 'used_exception', 'updated_at'])
-                _log(req, actor, RequestEvent.Action.EXCEPTION_SKIP,
-                     note='최근 3개월 이내 승인 이력이 있어 최종검수를 생략하고 완료 처리')
+                event = _log(req, actor, RequestEvent.Action.EXCEPTION_SKIP,
+                             note='최근 3개월 이내 승인 이력이 있어 최종검수를 생략하고 완료 처리')
                 _notify(req, [req.requester], f'"{req.product.name}" 발주 건이 완료되었습니다(최종검수 생략).',
-                        kakao=True)
+                        kakao=True, trigger=event)
             else:
                 req.status = ReorderRequest.Status.FINAL_REVIEW
                 req.save(update_fields=['status', 'updated_at'])
-                _log(req, actor, RequestEvent.Action.REVIEW_TO_FINAL, note=note)
+                event = _log(req, actor, RequestEvent.Action.REVIEW_TO_FINAL, note=note)
+                ask = f' 요청사항: {note.strip()}' if note.strip() else ''
                 _notify(req, effective_approvers(),
-                        f'"{req.product.name}" 최종 검수가 필요합니다.', kakao=True)
+                        f'"{req.product.name}" 최종 검수가 필요합니다.{ask}',
+                        kakao=True, trigger=event)
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
     return req
@@ -233,11 +242,13 @@ def complete_without_final_review(req, actor, reason):
         req.status = ReorderRequest.Status.COMPLETED
         req.used_exception = True
         req.save(update_fields=['status', 'used_exception', 'updated_at'])
-        _log(req, actor, RequestEvent.Action.REVIEW_DIRECT_COMPLETE, note=reason)
+        event = _log(req, actor, RequestEvent.Action.REVIEW_DIRECT_COMPLETE, note=reason)
         _notify(req, [req.requester],
-                f'"{req.product.name}" 발주 건이 완료되었습니다(연구소 검수 생략). 사유: {reason}', kakao=True)
+                f'"{req.product.name}" 발주 건이 완료되었습니다(연구소 검수 생략). 사유: {reason}',
+                kakao=True, trigger=event)
         _notify(req, effective_approvers(),
-                f'"{req.product.name}" 발주 건이 연구소 검수 없이 완료 처리되었습니다. 사유: {reason}')
+                f'"{req.product.name}" 발주 건이 연구소 검수 없이 완료 처리되었습니다. 사유: {reason}',
+                trigger=event)
     return req
 
 
@@ -257,8 +268,9 @@ def design_upload(req, actor, ai_file, jpg_file, note=''):
         req.current_file = new_file
         req.status = ReorderRequest.Status.REVIEW1
         req.save(update_fields=['current_file', 'status', 'updated_at'])
-        _log(req, actor, RequestEvent.Action.DESIGN_UPLOADED, note=f'v{new_file.version} 업로드: {note}')
-        _notify(req, effective_reviewers(), f'"{req.product.name}" 수정본 재확인이 필요합니다.', kakao=True)
+        event = _log(req, actor, RequestEvent.Action.DESIGN_UPLOADED, note=f'v{new_file.version} 업로드: {note}')
+        _notify(req, effective_reviewers(), f'"{req.product.name}" 수정본 재확인이 필요합니다.',
+                kakao=True, trigger=event)
     return req
 
 
@@ -285,18 +297,21 @@ def final_decision(req, actor, decision, reason='', attachment=None):
             req.current_file.approve(actor)
             req.status = ReorderRequest.Status.APPROVED
             req.save(update_fields=['status', 'updated_at'])
-            _log(req, actor, RequestEvent.Action.FINAL_APPROVE, note=reason)
+            event = _log(req, actor, RequestEvent.Action.FINAL_APPROVE, note=reason)
+            opinion = f' 의견: {reason.strip()}' if reason.strip() else ''
             _notify(req, effective_reviewers(),
-                    f'"{req.product.name}" 최종 승인되었습니다. 울산공장 전달 처리가 필요합니다.', kakao=True)
+                    f'"{req.product.name}" 최종 승인되었습니다. 울산공장 전달 처리가 필요합니다.{opinion}',
+                    kakao=True, trigger=event)
         elif decision in ('REVISION', 'REJECT'):
             req.status = ReorderRequest.Status.REVIEW1
             req.save(update_fields=['status', 'updated_at'])
             action = RequestEvent.Action.FINAL_REJECT if decision == 'REJECT' else RequestEvent.Action.FINAL_REVISION
-            _log(req, actor, action, note=reason, attachment=attachment)
+            event = _log(req, actor, action, note=reason, attachment=attachment)
             label = '반려' if decision == 'REJECT' else '수정 필요(경미)'
             attach_note = ' (수정사항 참고 파일 첨부됨)' if attachment else ''
             _notify(req, effective_reviewers(),
-                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}{attach_note}', kakao=True)
+                    f'"{req.product.name}" 최종검수 결과: {label}. 사유: {reason}{attach_note}',
+                    kakao=True, trigger=event)
         else:
             raise ValidationErrorWF('알 수 없는 처리입니다.')
     return req
@@ -317,8 +332,9 @@ def cancel_request(req, actor, reason):
     with transaction.atomic():
         req.status = ReorderRequest.Status.CANCELLED
         req.save(update_fields=['status', 'updated_at'])
-        _log(req, actor, RequestEvent.Action.CANCELLED, note=reason)
-        _notify_history(req, f'"{req.product.name}" 발주 건이 취소되었습니다. 사유: {reason}', kakao=True)
+        event = _log(req, actor, RequestEvent.Action.CANCELLED, note=reason)
+        _notify_history(req, f'"{req.product.name}" 발주 건이 취소되었습니다. 사유: {reason}',
+                        kakao=True, trigger=event)
     return req
 
 
@@ -334,8 +350,9 @@ def design_reject(req, actor, reason):
     with transaction.atomic():
         req.status = ReorderRequest.Status.REVIEW1
         req.save(update_fields=['status', 'updated_at'])
-        _log(req, actor, RequestEvent.Action.DESIGN_REJECT, note=reason)
-        _notify_history(req, f'"{req.product.name}" 디자인 담당자가 반려했습니다. 사유: {reason}', kakao=True)
+        event = _log(req, actor, RequestEvent.Action.DESIGN_REJECT, note=reason)
+        _notify_history(req, f'"{req.product.name}" 디자인 담당자가 반려했습니다. 사유: {reason}',
+                        kakao=True, trigger=event)
     return req
 
 
@@ -367,7 +384,7 @@ def handoff(req, actor):
     with transaction.atomic():
         req.status = ReorderRequest.Status.COMPLETED
         req.save(update_fields=['status', 'updated_at'])
-        _log(req, actor, RequestEvent.Action.HANDOFF, note='최종파일 관리 및 울산공장 전달')
+        event = _log(req, actor, RequestEvent.Action.HANDOFF, note='최종파일 관리 및 울산공장 전달')
         _notify(req, [req.requester], f'"{req.product.name}" 최종파일이 전달되었습니다. 요청이 완료되었습니다.',
-                kakao=True)
+                kakao=True, trigger=event)
     return req

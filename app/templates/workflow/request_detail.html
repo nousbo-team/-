@@ -79,6 +79,8 @@
             <span>최근 3개월 이내 승인 이력 있음 — 최종검수를 생략하고 바로 완료 처리</span>
           </label>
           {% endif %}
+          <textarea name="review_note" class="action-textarea" rows="2"
+                    placeholder="연구소에 전달할 요청글 — 어떤 점을 봐주셔야 하는지 (선택)"></textarea>
           <button class="btn btn-primary btn-lg" type="submit" name="action" value="review_confirm">최종 검수요청(연구소)</button>
         </form>
       </section>
@@ -172,6 +174,8 @@
         </div>
         <form method="post">
           {% csrf_token %}
+          <textarea name="reason" class="action-textarea" rows="2"
+                    placeholder="승인 의견 — 확인한 내용이나 전달할 말 (선택)"></textarea>
           <button class="btn btn-primary btn-lg" type="submit" name="action" value="final_approve">승인</button>
         </form>
       </section>

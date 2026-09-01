@@ -352,7 +352,9 @@ def request_detail(request, pk):
         try:
             if action == 'review_confirm':
                 use_exception = request.POST.get('use_exception') == 'on'
-                services.review_decision(req, request.user, 'CONFIRM_FINAL', use_exception=use_exception)
+                services.review_decision(req, request.user, 'CONFIRM_FINAL',
+                                         note=request.POST.get('review_note', ''),
+                                         use_exception=use_exception)
                 messages.success(request, '최종본 확인 처리했습니다.')
             elif action == 'review_complete':
                 reason = request.POST.get('direct_complete_reason', '')
@@ -374,7 +376,8 @@ def request_detail(request, pk):
                 else:
                     messages.error(request, 'AI/JPG 파일을 모두 첨부해주세요.')
             elif action == 'final_approve':
-                services.final_decision(req, request.user, 'APPROVE')
+                services.final_decision(req, request.user, 'APPROVE',
+                                        reason=request.POST.get('reason', ''))
                 messages.success(request, '최종 승인 처리했습니다.')
             elif action == 'final_revision':
                 reason = request.POST.get('reason', '')

@@ -344,6 +344,111 @@ class WorkflowTestCase(TestCase):
         self.assertIsNone(flow['current_owner'])
         self.assertTrue(all(s['state'] == 'cancelled' for s in flow['steps']))
 
+    def _last_action(self, req):
+        return req.events.exclude(action=RequestEvent.Action.NOTIFY).order_by('-id').first()
+
+    def _mail_html(self, req, recipient='받는사람'):
+        from . import notify
+        return notify._build_notify_email_html(req, '제목', '문구', recipient, self._last_action(req))
+
+    def test_mail_shows_previous_step_actor_not_original_requester(self):
+        """단계마다 '직전에 누가 무엇을 요청했는지'가 실려야 한다 — 예전에는 어느
+        단계의 알림이든 최초 등록자와 최초 요청사항만 실렸다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='앞면 로고를 5mm 위로')
+        req.refresh_from_db()
+
+        html = self._mail_html(req)
+        self.assertIn('보낸 사람', html)
+        self.assertIn(self.reviewer.get_full_name() or self.reviewer.username, html)
+        self.assertIn('앞면 로고를 5mm 위로', html)
+        self.assertIn('수정 요청', html)
+
+    def test_mail_keeps_original_request_as_separate_block(self):
+        """직전 내용이 주가 되고, 최초 요청은 참고용으로 구분해서 남는다."""
+        req, _ = services.create_request(
+            self.product, self.requester, ReorderRequest.Reason.NEEDS_REVISION,
+            detail='최초 요청 내용입니다')
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='수정 지시')
+        req.refresh_from_db()
+
+        html = self._mail_html(req)
+        self.assertIn('최초 요청', html)
+        self.assertIn('최초 요청 내용입니다', html)
+        # 직전 내용이 최초 내용보다 먼저(위에) 나와야 한다.
+        self.assertLess(html.index('수정 지시'), html.index('최초 요청 내용입니다'))
+
+    def test_submit_mail_has_no_duplicate_origin_block(self):
+        """등록 알림은 보낸 사람이 곧 최초 요청자라 같은 내용이 두 번 나오면 안 된다."""
+        req, _ = services.create_request(
+            self.product, self.requester, ReorderRequest.Reason.STOCK_SHORTAGE, detail='등록 내용')
+        html = self._mail_html(req)
+        self.assertIn('등록 내용', html)
+        self.assertNotIn('최초 요청', html)
+
+    def test_review_to_final_carries_the_note_to_the_lab(self):
+        """연구소 검수요청 시 창구가 남긴 요청글이 알림과 메일에 실려야 한다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL',
+                                 note='원산지 표기가 규정에 맞는지 확인 부탁드립니다')
+        req.refresh_from_db()
+
+        event = req.events.filter(action=RequestEvent.Action.REVIEW_TO_FINAL).first()
+        self.assertIn('원산지 표기', event.note)
+        self.assertIn('원산지 표기', self._mail_html(req))
+        # 인앱 알림 문구에도 실려야 연구소가 알림함에서 바로 읽는다.
+        msg = req.notifications.filter(user=self.approver).first().message
+        self.assertIn('원산지 표기', msg)
+
+    def test_approval_opinion_is_recorded_and_sent(self):
+        """연구소 승인 시 남긴 의견이 이력과 알림에 남아야 한다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        services.final_decision(req, self.approver, 'APPROVE', reason='규정 충족 확인했습니다')
+        req.refresh_from_db()
+
+        event = req.events.filter(action=RequestEvent.Action.FINAL_APPROVE).first()
+        self.assertEqual(event.note, '규정 충족 확인했습니다')
+        self.assertIn('규정 충족 확인했습니다', self._mail_html(req))
+        msg = req.notifications.filter(user=self.reviewer).first().message
+        self.assertIn('규정 충족 확인했습니다', msg)
+
+    def test_review_to_final_and_approve_work_without_a_note(self):
+        """요청글·의견은 선택 입력이라 비워도 기존처럼 동작해야 한다."""
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.FINAL_REVIEW)
+        services.final_decision(req, self.approver, 'APPROVE')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ReorderRequest.Status.APPROVED)
+
+    def test_mail_text_body_also_carries_previous_step(self):
+        """HTML을 못 읽는 메일 클라이언트용 본문에도 같은 정보가 있어야 한다."""
+        from . import notify
+        req = self._new_request()
+        services.review_decision(req, self.reviewer, 'NEEDS_EDIT', note='지시사항 본문')
+        req.refresh_from_db()
+        text = notify._build_notify_email_text(req, '문구', '받는사람', self._last_action(req))
+        self.assertIn('[보낸 사람]', text)
+        self.assertIn('[처리 내용]', text)
+        self.assertIn('지시사항 본문', text)
+
+    def test_detail_page_has_review_note_and_approval_opinion_fields(self):
+        """입력란이 실제 화면에 있어야 메일에 담을 내용이 생긴다."""
+        req = self._new_request()
+        self.client.force_login(self.reviewer)
+        html = self.client.get(f'/requests/{req.pk}/').content.decode()
+        self.assertIn('name="review_note"', html)
+
+        services.review_decision(req, self.reviewer, 'CONFIRM_FINAL')
+        req.refresh_from_db()
+        self.client.force_login(self.approver)
+        html = self.client.get(f'/requests/{req.pk}/').content.decode()
+        # 승인 카드의 의견 입력란
+        self.assertIn('승인 의견', html)
+
     def test_backup_routing_only_active_when_away(self):
         self.assertEqual(services.effective_reviewers(), [self.reviewer])
         self.reviewer_profile.is_away = True
